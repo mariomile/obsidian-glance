@@ -1,0 +1,9 @@
+{
+  "id": "glance",
+  "name": "Glance",
+  "version": "0.1.4",
+  "minAppVersion": "1.12.7",
+  "description": "Turn standalone web links into source-pure rich cards.",
+  "author": "Mario Miletta",
+  "isDesktopOnly": false
+}
