@@ -3,6 +3,8 @@
 Glance renders standalone web links as rich, Craft-style cards while keeping
 the note source as ordinary Markdown.
 
+Part of the marioverse Obsidian plugin suite.
+
 ## What makes it different
 
 - Source-pure: a raw URL or standard Markdown link stays unchanged.
