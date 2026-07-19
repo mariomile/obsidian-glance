@@ -5,6 +5,11 @@ the note source as ordinary Markdown.
 
 Part of the marioverse Obsidian plugin suite.
 
+<p align="center">
+  <img src="docs/card.png" width="700" alt="Glance — a rendered link card" />
+</p>
+<p align="center"><em>A standalone link, rendered as a card with favicon, domain, and preview image.</em></p>
+
 ## What makes it different
 
 - Source-pure: a raw URL or standard Markdown link stays unchanged.
