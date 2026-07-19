@@ -60,3 +60,30 @@ test('uses fresh cache entries and refresh bypasses them', async () => {
   assert.equal((await store.refresh(url)).title, 'Refreshed');
   assert.equal(fetches, 1);
 });
+
+test('limits metadata fetch concurrency across different URLs', async () => {
+  let active = 0;
+  let peak = 0;
+  const store = new MetadataStore({
+    initial: {},
+    ttlMs: () => 60_000,
+    maxEntries: () => 100,
+    maxConcurrentFetches: 2,
+    fetcher: async (url) => {
+      active += 1;
+      peak = Math.max(peak, active);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      active -= 1;
+      return metadata(url);
+    },
+    persist: () => undefined,
+  });
+
+  await Promise.all(
+    Array.from({ length: 8 }, (_, index) =>
+      store.ensure(`https://example.com/${index}`),
+    ),
+  );
+
+  assert.equal(peak, 2);
+});

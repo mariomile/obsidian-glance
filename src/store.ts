@@ -10,13 +10,16 @@ export interface MetadataStoreOptions {
   maxEntries: () => number;
   fetcher: (url: string, label?: string) => Promise<LinkMetadata>;
   persist: (entries: Record<string, LinkMetadata>) => void;
+  maxConcurrentFetches?: number;
 }
 
 export class MetadataStore {
   private readonly cache = new Map<string, LinkMetadata>();
   private readonly pending = new Map<string, Promise<LinkMetadata>>();
   private readonly subscribers = new Map<string, Set<Subscriber>>();
+  private readonly fetchQueue: Array<() => void> = [];
   private readonly options: MetadataStoreOptions;
+  private activeFetches = 0;
 
   constructor(options: MetadataStoreOptions) {
     this.options = options;
@@ -46,7 +49,7 @@ export class MetadataStore {
     const existing = this.pending.get(url);
     if (existing) return existing;
 
-    const request = this.options.fetcher(url, label).then((metadata) => {
+    const request = this.fetch(url, label).then((metadata) => {
       this.cache.delete(url);
       this.cache.set(url, metadata);
       this.prune();
@@ -85,6 +88,24 @@ export class MetadataStore {
 
   private emit(url: string, metadata: LinkMetadata): void {
     for (const listener of this.subscribers.get(url) ?? []) listener(metadata);
+  }
+
+  private fetch(url: string, label?: string): Promise<LinkMetadata> {
+    return new Promise<LinkMetadata>((resolve, reject) => {
+      const run = (): void => {
+        this.activeFetches += 1;
+        void this.options.fetcher(url, label)
+          .then(resolve, reject)
+          .finally(() => {
+            this.activeFetches -= 1;
+            this.fetchQueue.shift()?.();
+          });
+      };
+
+      const maximum = Math.max(1, this.options.maxConcurrentFetches ?? 4);
+      if (this.activeFetches < maximum) run();
+      else this.fetchQueue.push(run);
+    });
   }
 
   private prune(): void {
