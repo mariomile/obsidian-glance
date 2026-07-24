@@ -163,7 +163,12 @@ li > .glance-reading-card {
 }
 
 .glance-card__refresh.is-spinning svg {
-  animation: glance-spin 700ms linear infinite;
+  /* No --cosmos-t-* tier models a continuous spin *period* (all four are
+     finite one-shot durations for transitions/entrances). Consumed here as
+     --cosmos-t-spin in the suite's own token namespace — a forward
+     proposal, not a plugin-local escape hatch — so Cosmos can define it
+     centrally later; today it always resolves to the 700ms fallback. */
+  animation: glance-spin var(--cosmos-t-spin, 700ms) linear infinite;
 }
 
 .glance-card.is-degraded {
@@ -179,7 +184,10 @@ li > .glance-reading-card {
     var(--background-modifier-hover)
   );
   background-size: 220% 100%;
-  animation: glance-shimmer 1.4s ease-in-out infinite;
+  /* Same reasoning as glance-spin above: consumed as --cosmos-t-shimmer, a
+     forward proposal in the suite namespace; resolves to the 1.4s fallback
+     until/unless Cosmos defines it. */
+  animation: glance-shimmer var(--cosmos-t-shimmer, 1.4s) ease-in-out infinite;
 }
 
 .glance-card__skeleton-line {

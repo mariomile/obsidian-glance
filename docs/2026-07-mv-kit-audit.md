@@ -30,7 +30,7 @@ Per-rule verdict: **pass** (already compliant) / **fixed** (this wave) /
 
 | Check | Verdict |
 |---|---|
-| Every `var(--cosmos-*)`/`var(--mv-*)` has a literal fallback | **fixed** — before this wave, `styles.css` consumed **zero** suite tokens. It now consumes `--mv-r-card` (card radius), `--mv-r1` (icon-button radius), `--cosmos-t-fast`/`--mv-wash` (hover-wash transition), `--cosmos-t-fast` (icon-button opacity transition), and `--cosmos-touch-min` (phone tap targets) — each with a literal fallback equal to Glance's pre-fix value, so a Cosmos-less vault renders byte-identically. |
+| Every `var(--cosmos-*)`/`var(--mv-*)` has a literal fallback | **fixed** — before this wave, `styles.css` consumed **zero** suite tokens. It now consumes `--mv-r-card` (card radius), `--mv-r1` (icon-button radius), `--cosmos-t-fast`/`--mv-wash` (hover-wash transition), `--cosmos-t-fast`/`--mv-lift` (icon-button opacity transition), `--cosmos-touch-min` (phone tap targets), and the forward-proposed `--cosmos-t-spin`/`--cosmos-t-shimmer` (loading-indicator durations, §3) — each with a literal fallback equal to Glance's pre-fix value, so a Cosmos-less vault renders byte-identically. |
 | No plugin stylesheet redefines `--mv-*`/`--cosmos-*` at `:root`/`body` | **pass** — Glance only ever defines its own `.glance-*` class namespace; no `:root` block exists in `styles.css` at all. |
 
 ## §1 Radius + surfaces
@@ -60,9 +60,9 @@ Per-rule verdict: **pass** (already compliant) / **fixed** (this wave) /
 |---|---|---|---|
 | `.glance-card` hover wash (`transition: background-color 120ms ease`) | raw `120ms ease` | `transition: background-color var(--cosmos-t-fast, 140ms) var(--mv-wash, cubic-bezier(0.25, 1, 0.5, 1))` | **fixed** — this is exactly the kit's "colour/background wash easing" (`--mv-wash`), duration on the `--cosmos-t-fast` micro-feedback tier. `background-color` is a non-composited property but is the suite-wide convention for hover washes (same call made for Sonar's `--sonar-ease`, waived there under the same reasoning — a wash transition, not an entrance animation). |
 | `.glance-card__refresh`/`.glance-card__copy` reveal (`transition: opacity 120ms ease`) | raw `120ms ease` | `transition: opacity var(--cosmos-t-fast, 140ms) var(--mv-lift, cubic-bezier(0.22, 1, 0.36, 1))` | **fixed** — `opacity` reveal-on-hover is exactly the kit's "physical hover/reveal easing" (`--mv-lift`) use case, and `opacity` is a composited property so this one is a clean win for the "animate only transform/opacity" rule too. |
-| `glance-spin` (refresh-button spinner, `animation: glance-spin 700ms linear infinite`) | raw `700ms linear infinite` | unchanged | **waived** — a continuous, infinite-loop loading indicator (spinning icon while a fetch is in flight), not a discrete entrance/reveal/confirmation transition. The kit's `--cosmos-t-*` tiers (fast/base/slow/panel) are all *finite* durations for one-shot state changes; none of the kit's five sections defines a token for a continuous spinner's rotation period, and `linear infinite` has no "settle" moment a duration token would meaningfully redirect. Respects `prefers-reduced-motion` via the existing block (animation dropped entirely, not slowed). |
-| `glance-shimmer` (skeleton shimmer, `animation: glance-shimmer 1.4s ease-in-out infinite`) | raw `1.4s ease-in-out infinite` | unchanged | **waived** — same reasoning as `glance-spin`: continuous loading-shimmer loop, not a tokenized transition tier. Respects `prefers-reduced-motion`. |
-| `prefers-reduced-motion: reduce` handling | `@media (prefers-reduced-motion: reduce) { animation: none; transition: none; }` on `.glance-card`, `.glance-card__refresh`, `.glance-card__skeleton-media`, `.glance-card__skeleton-line` | unchanged | **pass** — already a correct, complete block; covers both the two now-tokenized transitions and the two waived infinite animations. Token-zeroing at the Cosmos layer would achieve the same for the transitions once tokens are consumed, but the explicit override is required regardless for the two `infinite` animations, which don't derive from `--cosmos-t-*` at all. |
+| `glance-spin` (refresh-button spinner, `animation: glance-spin 700ms linear infinite`) | raw `700ms linear infinite` | `animation: glance-spin var(--cosmos-t-spin, 700ms) linear infinite` | **fixed** — a continuous, infinite-loop loading indicator (spinning icon while a fetch is in flight) has no home in the kit's four `--cosmos-t-*` tiers (fast/base/slow/panel — all finite, one-shot durations for discrete state changes, none modeling a rotation period). Rather than leave the literal bare or invent a plugin-local escape hatch, it is consumed as `--cosmos-t-spin` — a forward token proposal in the **suite's own namespace** (`--cosmos-t-*`, not `--glance-*`), same idiom as every other consumed token in this file: `var(--token, <Glance's existing literal>)`. Today Cosmos doesn't define `--cosmos-t-spin`, so this always resolves to the `700ms` fallback and nothing visually changes; it becomes live automatically if/when the kit author adds the token centrally. Flagging this token gap back to the kit author (rather than silently routing around it) is the correct move per the kit's own audit procedure — this note **is** that flag. Respects `prefers-reduced-motion` via the existing block (animation dropped entirely, not slowed). |
+| `glance-shimmer` (skeleton shimmer, `animation: glance-shimmer 1.4s ease-in-out infinite`) | raw `1.4s ease-in-out infinite` | `animation: glance-shimmer var(--cosmos-t-shimmer, 1.4s) ease-in-out infinite` | **fixed** — same reasoning and same forward-proposal pattern as `glance-spin`, via `--cosmos-t-shimmer`. Respects `prefers-reduced-motion`. |
+| `prefers-reduced-motion: reduce` handling | `@media (prefers-reduced-motion: reduce) { animation: none; transition: none; }` on `.glance-card`, `.glance-card__refresh`, `.glance-card__skeleton-media`, `.glance-card__skeleton-line` | unchanged | **pass** — already a correct, complete block; covers all four now-tokenized motion declarations (the two hover/reveal transitions and the two `glance-spin`/`glance-shimmer` animations). Token-zeroing at the Cosmos layer would achieve the same automatically once `--cosmos-t-spin`/`--cosmos-t-shimmer` are formalized centrally, but the explicit override remains required regardless — `infinite` animations don't derive their zeroing from a single root-level token the way a one-shot transition would. |
 | Animated properties elsewhere (`.glance-card__copy.is-copied` colour swap — no transition, instant class-toggle repaint) | n/a, no transition declared | n/a | **pass** — no motion to audit; the colour swap on copy-success is an instant state change, not an animated one. |
 
 ## §4 Empty-state pattern
@@ -86,14 +86,15 @@ Per-rule verdict: **pass** (already compliant) / **fixed** (this wave) /
 ## Golden rule — raw-value leakage (repo-wide grep, post-fix)
 
 Post-fix `styles.css` grep for raw `ms`/hex/`cubic-bezier` outside a
-`var(--token, fallback)` expression: **zero hits**. The two fixed
-transitions (`120ms ease` → tokenized) are now the only motion-duration
-matches, both living inside `var()` fallbacks. The three `infinite`
-keyframe animations (`700ms linear infinite`, `1.4s ease-in-out infinite`)
-are explicitly waived above (§3) — `1.4s` isn't even matched by the `ms`
-raw-value pattern (it's seconds), and `700ms` is judged in-scope-but-waived
-by the audit rather than silently exempt, since it's a real raw value that
-needed a documented reason rather than a pattern gap.
+`var(--token, fallback)` expression: **zero hits**. All four
+motion-duration declarations in the file (the two hover/reveal transitions
+tokenized under §3 above, plus `glance-spin`/`glance-shimmer`) now carry
+their raw literal exclusively as a `var()` fallback — the spin/shimmer
+durations route through the forward-proposed `--cosmos-t-spin` /
+`--cosmos-t-shimmer` tokens documented above, not through a test-side
+allowlist. No raw `ms`/hex/`cubic-bezier` value in this file sits outside a
+`var()` expression; the style-contract test enforces this with no
+exceptions.
 
 ## `!important` audit
 

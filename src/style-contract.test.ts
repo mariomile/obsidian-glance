@@ -72,23 +72,17 @@ test('raw ms/hex/cubic-bezier values appear only as var() fallbacks', () => {
   const rawCubicBezierPattern = /cubic-bezier\([^)]*\)/g;
 
   // The two `infinite`-loop loading indicators (glance-spin on the refresh
-  // button, glance-shimmer on the skeleton) are the sole documented
-  // exception, per docs/2026-07-mv-kit-audit.md §3: a continuous rotation/
-  // shimmer period isn't a discrete transition the kit's --cosmos-t-* tiers
-  // (fast/base/slow/panel, all finite, one-shot durations) have a token
-  // for. Narrow allowlist by exact declaration text, not a blanket
-  // `infinite` exemption, so any *other* raw value added later still fails.
-  const waivedInfiniteAnimations = [
-    'animation: glance-spin 700ms linear infinite;',
-    'animation: glance-shimmer 1.4s ease-in-out infinite;',
-  ];
+  // button, glance-shimmer on the skeleton) route through --cosmos-t-spin /
+  // --cosmos-t-shimmer — forward token proposals in the suite's own
+  // namespace, per docs/2026-07-mv-kit-audit.md §3, since none of the kit's
+  // four --cosmos-t-* tiers (fast/base/slow/panel, all finite, one-shot
+  // durations) models a continuous rotation/shimmer period. No allowlist
+  // needed: their raw fallback values (700ms, 1.4s) already live inside a
+  // var() expression like every other consumed token in this file.
 
   const violations: string[] = [];
 
   lines.forEach((line, idx) => {
-    const trimmed = line.trim();
-    if (waivedInfiniteAnimations.includes(trimmed)) return;
-
     // A raw value is allowed when it sits as the fallback inside ANY
     // var(--token, <fallback>) expression (native Obsidian tokens like
     // --shadow-s included) — the contract's requirement is "never a bare
