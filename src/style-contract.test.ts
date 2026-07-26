@@ -188,3 +188,42 @@ test('§6: opacity/colour reveal transitions ease with --mv-wash, never --mv-lif
 
   assert.deepEqual(offenders, []);
 });
+
+test('§6: .glance-card hover has both a colour wash and a --mv-lift transform lift', () => {
+  // mv-kit §6 "Hover richness": "a hover state is colour AND a subtle
+  // physical lift, never colour alone." The kit's own worked example draws
+  // the line on surface type, not document position: `.row:hover` (plain
+  // text row) stays colour-only, `.card:hover` (a bordered/rounded card
+  // widget) gets colour+lift. `.glance-card` is a `-card`-styled surface
+  // (border-radius, min-height, media/title/description/footer layout) —
+  // the same shape obsidian-tabx's `.tabx-card:hover` is (commit cc65cd4
+  // added its lift for exactly this reason), not a plain row like
+  // `.tabx-tab`/`.sonar-result`. So its hover rule must declare a
+  // `transform: translateY(...)` eased with --mv-lift, alongside the
+  // existing colour wash eased with --mv-wash — both inside the same
+  // @media (hover: hover) gate the wash already lives in.
+  const code = stripComments(css);
+
+  const hoverGateMatch = code.match(
+    /@media\s*\(hover:\s*hover\)\s*\{\s*\.glance-card:hover\s*\{([^}]*)\}/,
+  );
+
+  assert.ok(hoverGateMatch, 'expected to find .glance-card:hover inside @media (hover: hover)');
+  const ruleBody = hoverGateMatch?.[1] ?? '';
+
+  assert.match(
+    ruleBody,
+    /transform:\s*translateY\(-([01](?:\.\d+)?)px\)/,
+    'expected a translateY transform lift on .glance-card:hover',
+  );
+
+  const liftMatch = ruleBody.match(/transform:\s*translateY\(-(\d+(?:\.\d+)?)px\)/);
+  const liftPx = liftMatch ? Number(liftMatch[1]) : NaN;
+  assert.ok(liftPx > 0 && liftPx <= 2, `expected lift between 0 and 2px, got ${liftPx}`);
+
+  assert.match(
+    code,
+    /\.glance-card\s*\{[^}]*transition:[^}]*transform\s+var\(--cosmos-t-fast,\s*140ms\)\s*var\(--mv-lift,/,
+    'expected .glance-card base rule to carry a transform transition eased with --mv-lift',
+  );
+});
