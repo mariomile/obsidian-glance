@@ -24,7 +24,9 @@ li > .glance-reading-card {
   background: transparent;
   border: none;
   border-radius: var(--mv-r-card, 10px);
-  transition: background-color var(--cosmos-t-fast, 140ms) var(--mv-wash, cubic-bezier(0.25, 1, 0.5, 1));
+  transition:
+    background-color var(--cosmos-t-fast, 140ms) var(--mv-wash, cubic-bezier(0.25, 1, 0.5, 1)),
+    transform var(--cosmos-t-fast, 140ms) var(--mv-lift, cubic-bezier(0.22, 1, 0.36, 1));
 }
 
 /* Obsidian core forces `.cm-content > *` to display:block (specificity 0,3,0),
@@ -37,10 +39,16 @@ li > .glance-reading-card {
 /* mv-kit §6: a custom :hover on a phone-reachable element must live inside
    @media (hover: hover) — the card is inline document content, directly
    tappable on phone; a bare rule fires on tap and leaves the wash "stuck"
-   until an unrelated tap elsewhere, since touch has no pointer to leave. */
+   until an unrelated tap elsewhere, since touch has no pointer to leave.
+   mv-kit §6 fix: hover richness is colour AND a subtle physical lift, never
+   colour alone — this card is a `-card`-styled surface (border-radius,
+   media/title/description/footer), the same shape as obsidian-tabx's
+   .tabx-card, not a plain text row, so it gets the lift too. The wash eases
+   with --mv-wash, the lift with --mv-lift, per the kit's own split. */
 @media (hover: hover) {
   .glance-card:hover {
     background: var(--background-modifier-hover);
+    transform: translateY(-1px);
   }
 }
 
