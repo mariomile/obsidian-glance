@@ -34,8 +34,14 @@ li > .glance-reading-card {
   display: flex;
 }
 
-.glance-card:hover {
-  background: var(--background-modifier-hover);
+/* mv-kit §6: a custom :hover on a phone-reachable element must live inside
+   @media (hover: hover) — the card is inline document content, directly
+   tappable on phone; a bare rule fires on tap and leaves the wash "stuck"
+   until an unrelated tap elsewhere, since touch has no pointer to leave. */
+@media (hover: hover) {
+  .glance-card:hover {
+    background: var(--background-modifier-hover);
+  }
 }
 
 .glance-card:focus-within {
@@ -140,7 +146,11 @@ li > .glance-reading-card {
   border: none;
   border-radius: var(--mv-r1, 7px);
   box-shadow: var(--shadow-s, 0 1px 2px rgb(0 0 0 / 12%));
-  transition: opacity var(--cosmos-t-fast, 140ms) var(--mv-lift, cubic-bezier(0.22, 1, 0.36, 1));
+  /* mv-kit §6 fix: an opacity reveal is a colour/opacity wash in the kit's
+     own vocabulary, not a physical transform lift — --mv-wash is the correct
+     easing (matches obsidian-portal's --portal-wash-motion split for the
+     identical .portal-section-action opacity-reveal pattern). */
+  transition: opacity var(--cosmos-t-fast, 140ms) var(--mv-wash, cubic-bezier(0.25, 1, 0.5, 1));
 }
 
 .glance-card__refresh {
@@ -151,11 +161,20 @@ li > .glance-reading-card {
   right: 44px;
 }
 
-.glance-card:hover .glance-card__refresh,
-.glance-card:hover .glance-card__copy,
 .glance-card__refresh:focus-visible,
 .glance-card__copy:focus-visible {
   opacity: 1;
+}
+
+/* mv-kit §6: gated, see the .glance-card:hover comment above — these buttons
+   are forced visible (opacity: 1) on phone via the @media (max-width: 600px)
+   block below, so a stuck hover-triggered reveal here is directly reachable
+   on touch otherwise. */
+@media (hover: hover) {
+  .glance-card:hover .glance-card__refresh,
+  .glance-card:hover .glance-card__copy {
+    opacity: 1;
+  }
 }
 
 .glance-card__copy.is-copied {
