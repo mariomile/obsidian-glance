@@ -163,7 +163,7 @@ surface of this type exists).
 | Rule | Desktop | Phone | Verdict |
 |---|---|---|---|
 | Hover gated to `@media (hover: hover)` on phone-reachable elements | **was a violation**: `.glance-card:hover` (line 37) and `.glance-card:hover .glance-card__refresh, .glance-card:hover .glance-card__copy` (lines 154-155) were bare `:hover` rules, ungated | **was a violation**: the card is inline document content, directly tappable on phone (no dismiss/pointer-leave semantics on touch) — a bare `:hover` would leave the background wash and the button reveal "stuck" on until an unrelated tap elsewhere | **fixed** — both wrapped in `@media (hover: hover)`. `:focus-visible` on the icon buttons was left untouched and ungated (keyboard-only, must never be hover-gated — matches the obsidian-portal precedent for the identical shape of rule). No functional regression on phone: the buttons already have an independent always-visible fallback (`opacity: 1` in the existing `@media (max-width: 600px)` block, lines 236-239 pre-fix) that does not depend on `:hover` at all, so gating the hover-triggered reveal removes zero phone functionality — unlike Portal's `.portal-collection-open`, no new phone fallback was needed here because one already existed. |
-| Colour **and** lift, never colour alone | `.glance-card:hover` is a colour-only wash (`background-color`), no `transform` | hover unreachable on touch (now correctly gated) | **pass, waived** — mv-kit's own code example splits `.row:hover` (colour-only) from `.card:hover` (colour+lift) as two distinct patterns, not one rule both must satisfy. `.glance-card` behaves like the kit's *row* case here: it's inline document flow content (closer to a list row than a floating card widget), and a `translateY` lift on an inline document element would visually jostle surrounding text — not the "hint" the kit intends. Matches the cross-plugin precedent already used in wave 2 (Sonar `.sonar-result` row, colour-only) and wave 2/6 (TabX `.tabx-tab` row, colour-only vs `.tabx-card`, colour+lift). |
+| Colour **and** lift, never colour alone | `.glance-card:hover` was a colour-only wash (`background-color`), no `transform` | hover unreachable on touch (correctly gated) | **fixed** — added `transform: translateY(-1px)` to `.glance-card:hover`, eased with `--mv-lift` on the base rule's `transition`, alongside the existing `--mv-wash`-eased colour wash. **Correction to this wave's initial pass** (caught in review, see the "Corrections" subsection below): the first pass of this audit waived the lift, arguing `.glance-card` was closer to the kit's *row* example (`.row:hover`, colour-only) than its *card* example (`.card:hover`, colour+lift) because it's inline document-flow content. That distinction doesn't survive contact with the kit text or the TabX precedent: the kit draws the row/card line on surface styling, not document position, and `.glance-card` is styled exactly like a card (`-card` class name, `border-radius`, `min-height: 84px`, media/title/description/footer layout) — the same shape as `.tabx-card`, which got the identical lift in the model commit (`cc65cd4`) for the identical reason ("had colour/shadow richness but no transform"). Sonar's `.sonar-result` and TabX's own `.tabx-tab` are genuinely plain text rows with no card chrome — not a valid analogy for `.glance-card`. |
 | `--mv-wash` for colour/opacity transitions, `--mv-lift` for transform transitions (not interchangeable) | **was a violation**: `.glance-card__refresh`/`.glance-card__copy`'s `opacity` reveal transition (line 143 pre-fix) was wired to `--mv-lift` (the physical-transform easing) | same fix applies (opacity reveal is device-agnostic) | **fixed** — repointed to `--mv-wash` (`var(--cosmos-t-fast, 140ms) var(--mv-wash, cubic-bezier(0.25, 1, 0.5, 1))`). An `opacity` reveal-on-hover is a colour/opacity wash in the kit's own §6 vocabulary, not a physical transform lift — confirmed against obsidian-portal's own explicit precedent for the identical pattern: `.portal-section-action`'s opacity reveal was repointed from the shared `--portal-motion` (`--mv-lift`) alias to a new `--portal-wash-motion` (`--mv-wash`) alias in commit `389d564`, with the commit message stating the rule in exactly these terms ("colour/opacity washes ease with --mv-wash… physical transforms ease with --mv-lift"). `.glance-card`'s own background-colour hover wash (line 27, base rule) was already correctly on `--mv-wash` pre-wave — only the button's opacity reveal was mismatched. Guarded by a new style-contract test. |
 | `transform` lift never exceeds 2px | n/a — no lift-transform hover exists anywhere in the file (`grep -n transform styles.css`: only the spinner's `rotate(360deg)`, a continuous loading animation, not a hover lift) | same | **pass, not applicable** |
 
@@ -188,9 +188,6 @@ already audited under wave 6 §3, unchanged this wave).
   (hover: hover)` wrapper addition around two already-shipped hover rules,
   or a single token repoint (`--mv-lift` → `--mv-wash` on one `transition`
   declaration).
-- No lift-transform was added to `.glance-card:hover` — waived as a row-type
-  surface (colour-only), not a card-type surface (colour+lift), per the
-  kit's own row/card split and cross-plugin precedent (Sonar, TabX).
 - No new phone-only fallback was needed for the icon-button reveal (unlike
   Portal's `.portal-collection-open` case) — the existing `@media
   (max-width: 600px)` always-visible `opacity: 1` rule already covers
@@ -200,7 +197,7 @@ already audited under wave 6 §3, unchanged this wave).
 
 ### Style contract — new §6 assertions
 
-Two new assertions added to `src/style-contract.test.ts`, both mechanically
+Three new assertions added to `src/style-contract.test.ts`, all mechanically
 derived from the concrete findings above (zero speculative assertions):
 
 1. **`§6: every bare :hover rule is gated inside @media (hover: hover)`** —
@@ -210,19 +207,53 @@ derived from the concrete findings above (zero speculative assertions):
 2. **`§6: opacity/colour reveal transitions ease with --mv-wash, never
    --mv-lift`** — scans for any `transition: opacity …` declaration that
    references `--mv-lift` and flags it.
+3. **`§6: .glance-card hover has both a colour wash and a --mv-lift
+   transform lift`** (added in the correction pass below) — asserts
+   `.glance-card:hover` inside the `@media (hover: hover)` gate declares a
+   `translateY` transform between 0 and 2px, and that the base `.glance-card`
+   rule's `transition` carries a `transform` term eased with `--mv-lift`.
 
-**Red-before-green, verified**: both assertions were written and run
-against the pre-fix file first — both failed as expected (assertion 1
+**Red-before-green, verified**: all three assertions were written and run
+against the pre-fix file first — all failed as expected (assertion 1
 flagged all three offending `:hover` selector lines by line number;
 assertion 2 flagged the one mismatched `transition: opacity` declaration by
-line number and full text). Both fixes were then applied and the suite
-re-run: both new assertions pass, all 15 pre-existing assertions stayed
-green throughout (17/17 total).
+line number and full text; assertion 3 — added in the correction pass —
+failed with "expected a translateY transform lift on .glance-card:hover"
+against the then-current, lift-less rule). Each fix was then applied and the
+suite re-run: all three new assertions pass, all 15 original pre-existing
+assertions stayed green throughout (18/18 total after the correction pass).
+
+### Corrections (post-initial-pass review)
+
+A review of this wave's first pass flagged that the "Colour and lift, never
+colour alone" row above had waived `.glance-card`'s lift on a "document-flow
+row, not a card" distinction that the kit text doesn't draw and that
+contradicts the TabX model commit (`cc65cd4`) this same wave was told to
+check itself against — `.tabx-card` is styled the same way `.glance-card`
+is (bordered/rounded card with media/title/footer) and got the lift for
+exactly that reason. Re-read against the kit's own `.row:hover`/`.card:hover`
+example and the TabX precedent, `.glance-card` is unambiguously the *card*
+case: `-card` class name, `border-radius: var(--mv-r-card, 10px)`,
+`min-height: 84px`, structured media/title/description/footer layout — not
+a plain text row like `.sonar-result` or `.tabx-tab`. The waiver was wrong
+and has been corrected: `transform: translateY(-1px)` was added to
+`.glance-card:hover` (inside the existing `@media (hover: hover)` gate),
+eased with `--mv-lift` on the base rule's `transition`, matching the wash
+already eased with `--mv-wash`. Guarded by new style-contract assertion 3
+above, red-green verified. The existing `@media (prefers-reduced-motion:
+reduce)` block already lists `.glance-card` with `transition: none`, so the
+new transform transition is zeroed there with no further change needed.
+The per-rule table row, the "Not touched" bullet that previously named this
+as an explicit non-goal, and this section have all been updated/added to
+reflect the corrected, landed state — no prior audit content was deleted,
+only the one factually-superseded waiver line and its related non-goal
+bullet were brought in line with what actually shipped.
 
 ### Verification
 
 - `pnpm test` (`node --experimental-strip-types --test src/*.test.ts`) —
-  **tests 17 / pass 17 / fail 0** (15 pre-existing + 2 new §6 assertions).
+  **tests 18 / pass 18 / fail 0** (15 pre-existing + 2 original §6
+  assertions + 1 added in the correction pass).
 - `pnpm lint` / `pnpm build` / full `pnpm release:check` — see the top-level
   Verification note for this wave's real numbers (run once, covering both
   this §6 pass and confirming no regression to the wave-6 fixes above it).
@@ -230,6 +261,7 @@ green throughout (17/17 total).
   Obsidian's `EmulateMobile` is never enabled for verification (kills
   Node-based plugins in this suite). The phone-reachability claims above
   (the card is directly tappable; the icon-button fallback is independent
-  of `:hover`) are verified by reading `@media (max-width: 600px)` and the
-  card's DOM/CSS directly, not by rendering on-device. Phone sign-off
-  remains Mario's, on-device.
+  of `:hover`; the lift transition is zeroed under reduced-motion) are
+  verified by reading `@media (max-width: 600px)` /
+  `@media (prefers-reduced-motion: reduce)` and the card's DOM/CSS directly,
+  not by rendering on-device. Phone sign-off remains Mario's, on-device.
