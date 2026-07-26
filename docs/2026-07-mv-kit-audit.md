@@ -265,3 +265,169 @@ bullet were brought in line with what actually shipped.
   verified by reading `@media (max-width: 600px)` /
   `@media (prefers-reduced-motion: reduce)` and the card's DOM/CSS directly,
   not by rendering on-device. Phone sign-off remains Mario's, on-device.
+
+---
+
+## §7 — wave 2026-07 lettura
+
+Audit of `styles.css` and everything under `src/` against
+`obsidian-cosmos-theme/docs/mv-kit.md` §7 "Reading rhythm" (commit
+`1898860`, cantiere 3 — "Scrittura & lettura"), both desktop and phone
+columns. §7 is descriptive-first per the kit's own text: it locks in
+*coherence and tokenization*, it does not impose new taste values. Scope:
+tokenization audit only — no redesign, no size changes, no visual delta.
+Per-surface verdicts below use the kit's own vocabulary: **tokenized** /
+**deliberate-deviation-with-reason** / **chrome-out-of-scope**.
+
+Glance has exactly three surfaces with any typography at all —
+`.glance-card__title`, `.glance-card__description`, `.glance-card__footer`
+— all three already flagged as content typography under wave 6 §2
+("content-typography changes… NC-Tight is a separate, not-yet-started
+workstream (cantiere 3)"). §7 is that workstream's first real pass: instead
+of leaving them unexamined, this wave evaluates each one explicitly against
+the reading-rhythm table and records a reasoned verdict, per the kit's own
+instruction ("any deliberate deviation… is recorded in the plugin's audit
+note with its reason — an undocumented one-off line-height is drift, the
+same value with a stated reason is a decision").
+
+### `--file-line-width` / heading-scale verification
+
+Grepped `styles.css` and all of `src/*.ts` for `line-width`, `h1`-`h6`,
+`heading`, `font-text-size`, `p-spacing`, and `line-height-normal`:
+
+- `styles.css`: **zero hits** for any of the above.
+- `src/*.ts`: **one** incidental hit — `settings.ts:13`,
+  `containerEl.createEl('h2', { text: 'Glance' })`, Obsidian's own native
+  settings-tab section heading, created via the standard `Setting`-API
+  idiom every plugin uses for its settings-tab title. It does not touch
+  `--file-line-width`, does not touch the editor heading scale
+  (`1.618/1.462/1.318em`), and does not appear inside any note-rendering
+  path — it is the settings panel's own `<h2>`, entirely unrelated to the
+  reading measure §7 governs.
+
+**Verdict: confirmed clean.** Glance never sets or overrides
+`--file-line-width` and never touches the heading scale, on desktop or
+phone. The card renders inside whatever reading measure the theme/user has
+set for the note, unmodified.
+
+### Per-surface verdicts
+
+| Surface | Desktop | Phone | Verdict |
+|---|---|---|---|
+| `.glance-card__description` | `font-size: 14px`, `line-height: 1.35`, `-webkit-line-clamp: 2` | `font-size: 12px` (same `line-height`/clamp, no override) | **deliberate-deviation-with-reason** — see below |
+| `.glance-card__title` | `font-size: 16px`, `line-height: 1.3`, `-webkit-line-clamp: 2` | `font-size: 14px` | **chrome-out-of-scope** — per the brief's own framing, this is chrome (the card's title bar), not prose; §7 governs prose surfaces, and a clamped 1–2 word-wrapped headline has no paragraph rhythm to keep coherent with `--line-height-normal`/`--p-spacing` in the first place |
+| `.glance-card__footer` | `font-size: 12px`, `line-height: 1.25` | `font-size: 11px` | **chrome-out-of-scope** — metadata row (favicon + site name), single-line, no paragraph rhythm; same reasoning as title |
+
+**`.glance-card__description` reasoning (the judgment call the brief asked
+for).** The kit's §7 MUST applies to "a plugin that renders **prose** (note
+preview, chat message, card excerpt, search snippet)" — card excerpt is
+named explicitly, so this surface is not automatically out of scope the way
+title/footer are. The verdict is nonetheless
+**deliberate-deviation-with-reason**, not **tokenized**, for three
+compounding reasons:
+
+1. **The clamp makes it non-prose in effect.** `-webkit-line-clamp: 2`
+   hard-caps the surface at exactly two lines inside a fixed card geometry
+   (`min-height: 84px` desktop / `72px` phone, shared with the title and
+   footer rows in the same flex column). §7's reading tokens
+   (`--line-height-normal` 1.6/1.55, `--p-spacing` 1rem) model *continuous
+   flowing prose the reader scrolls through* — a paragraph that keeps going.
+   A 2-line clamped excerpt is structurally a **preview snippet** (the same
+   category as a search-result snippet), not a paragraph; there is no
+   "rhythm" to keep coherent past the second line because a third line
+   never renders.
+2. **Swapping the token would change the visual (forbidden by this
+   pass's own mandate).** `--font-text-size` is 16px desktop / 18px phone
+   (vs. the current 14px/12px) and `--line-height-normal` is 1.6/1.55 (vs.
+   the current 1.35). Applying either would grow the two clamped lines
+   enough to require either a taller card (`min-height`) or fewer
+   characters fitting per line — a layout/visual change, explicitly
+   forbidden by this brief ("no redesign, no size changes, no visual
+   delta"). Tokenizing this surface is therefore not a no-op substitution
+   the way the wave-6 radius/motion fixes were; it cannot be done "minimal".
+3. **Precedent inside this same file.** The title (16px) and footer (12px)
+   rows sit in the identical fixed-height card chrome, already ruled
+   chrome-out-of-scope above and in wave 6 §2. The description differs only
+   in being *quoted excerpt text* rather than a title string — but it is
+   laid out, clamped, and sized exactly like its chrome siblings, not like
+   the note body the reader is editing. Treating it differently from its
+   two neighbors inside the same card would be the actual coherence
+   violation.
+
+Net: `.glance-card__description` keeps its current literals (`14px`/`1.35`
+desktop, `12px` phone) as a **documented decision**, not silent drift. If
+Mario later wants the card's excerpt line to visually track the vault's
+reading rhythm (e.g. on a future NC-Tight pass that also revisits the
+clamp/card-height budget), that is a taste call for him, not something this
+coherence-only pass should force through a token swap that changes what the
+card looks like.
+
+`font-family: var(--font-interface)` on all three surfaces (title,
+description, footer) was already correct pre-wave and stays correct here:
+`--font-interface` is the right family for this content — none of the
+three should switch to `--font-text` (the prose font), which would be a
+genuine §7 violation in the other direction (chrome/excerpt content
+borrowing the reading font). No change needed.
+
+### STEP 2 fixes landed this wave
+
+**None.** No genuine §7 prose-token hardcode exists in `styles.css` or
+`src/*.ts` to fix:
+
+- The three typography surfaces above are either chrome-out-of-scope
+  (title, footer) or a reasoned deliberate deviation (description) — none
+  is a case of "prose silently hardcoding its own rhythm" that a `var(...,
+  literal)` substitution would coherently fix without a visual delta.
+  the `--file-line-width` and heading-scale — the two hard MUST NOTs — are
+  both confirmed untouched (see verification above), so there is nothing to
+  revert either.
+- Per this brief's own instruction, `src/style-contract.test.ts` is **not**
+  extended this wave: extending it would mean asserting on a fix that
+  doesn't exist, which is exactly the speculative-assertion case the brief
+  rules out ("If STEP 2 yields zero genuine fixes, do NOT extend the test
+  file"). The `tdd` skill's own red-before-green discipline agrees: there
+  is no behavior change to drive a test from.
+
+### Proposte per Mario (non applicate)
+
+Taste/visual-improvement ideas surfaced during this audit — **not applied**,
+listed here only for Mario's future call:
+
+1. **`.glance-card__title` (16px/14px), `.glance-card__description`
+   (14px/12px), `.glance-card__footer` (12px/11px) are all hand-picked
+   px values**, not drawn from the `--font-ui-*` scale or any suite-wide
+   card-content scale. They read as internally consistent (title > body >
+   footer, consistent step-down on phone) but are three independent literal
+   choices rather than a named scale. If/when the NC-Tight cantiere 3
+   workstream formally kicks off, these three are the natural first
+   candidates for a shared `--glance-card-title-size` /
+   `--glance-card-body-size` / `--glance-card-meta-size` token trio (plugin
+   -local tokens, not `--mv-*`/`--cosmos-*` — the kit's golden rule reserves
+   the suite namespace for suite-wide concerns, and per-plugin card-content
+   scales aren't one).
+2. **`.glance-card__description`'s 2-line clamp height budget** could be
+   revisited alongside the `--font-text-size`/`--line-height-normal`
+   question raised above — e.g. growing `min-height` slightly to let the
+   excerpt sit at the vault's actual reading line-height without changing
+   how many characters fit. This is a genuine visual/layout change (bigger
+   card), so it's a redesign call for Mario, not a coherence fix.
+3. **Line-height micro-steps (1.3 / 1.35 / 1.25) across title / description
+   / footer** are each individually reasonable for a clamped, chrome-styled
+   line, but as a trio they are three different hand-tuned values with no
+   documented relationship to each other or to the 1.55/1.6 split the kit
+   already blesses as intentional elsewhere. Not a violation — the kit's
+   own reading-rhythm table only governs true prose surfaces — but a
+   candidate for Mario to eyeball if the NC-Tight pass above ever happens,
+   since three near-but-not-quite-equal values read as three separate
+   taste decisions rather than one.
+
+### Verification
+
+- Grep-only static check (no `EmulateMobile`, per the hard constraint):
+  `--file-line-width` / heading-scale confirmed absent from both
+  `styles.css` and `src/*.ts` (see above).
+- No CSS or TypeScript file was modified this wave — see the top-level
+  Verification note for this wave's `pnpm release:check` numbers, run once
+  to confirm the zero-change state stays green.
+- `git status -sb` after this wave's commit(s): docs-only change (this
+  section), no `styles.css`/`src/*.ts` diff, no test-file diff.
