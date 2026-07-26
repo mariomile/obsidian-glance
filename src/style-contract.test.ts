@@ -115,3 +115,76 @@ test('caps !important declarations at the post-mv-kit-audit count (ratchet down 
     `!important count ${importantCount} exceeds the frozen ceiling of 0`,
   );
 });
+
+// --- mv-kit §6 "Elevation & motion depth" (wave 2026-07 dinamica) ---------
+//
+// Two concrete violations found and fixed this wave, both guarded below:
+// (1) .glance-card's hover reveal (the card wash itself, and the refresh/
+//     copy icon-button opacity reveal it triggers) was a bare :hover rule,
+//     ungated — the card is inline document content, directly tappable on
+//     phone, so a bare :hover leaves a stuck wash/opacity-1 state on tap
+//     (touch has no pointer-leave to clear it). (2) the icon-button opacity
+//     reveal transition was wired to --mv-lift (the physical-transform
+//     easing) instead of --mv-wash — an opacity reveal is a colour/opacity
+//     wash in mv-kit §6's own vocabulary, not a transform lift, matching
+//     the precedent obsidian-portal set for the identical pattern
+//     (.portal-section-action's opacity reveal, commit 389d564).
+
+test('§6: every bare :hover rule is gated inside @media (hover: hover)', () => {
+  // Brace-depth scan over stripped comments: walk the file tracking @media
+  // block nesting, and flag any `:hover` selector that opens at a depth
+  // where the innermost enclosing @media isn't a (hover: hover) block.
+  const code = stripComments(css);
+  const lines = code.split('\n');
+
+  type MediaFrame = { isHoverGate: boolean };
+  const mediaStack: MediaFrame[] = [];
+  const offenders: string[] = [];
+
+  lines.forEach((rawLine, idx) => {
+    const line = rawLine.trim();
+
+    // Selector line containing :hover, not itself an @media line.
+    if (/:hover/.test(line) && !/^@media/.test(line)) {
+      const insideHoverGate = mediaStack.some((frame) => frame.isHoverGate);
+      if (!insideHoverGate) {
+        offenders.push(`line ${idx + 1}: "${line}"`);
+      }
+    }
+
+    // Track @media nesting via brace balance on this line (mv-kit's
+    // stylesheets never nest an @media inside a selector block before its
+    // own opening brace, so a per-line open/close count is sufficient).
+    const opens = (line.match(/{/g) ?? []).length;
+    const closes = (line.match(/}/g) ?? []).length;
+
+    if (/^@media\s*\(hover:\s*hover\)/.test(line)) {
+      mediaStack.push({ isHoverGate: true });
+    } else if (/^@media/.test(line) && opens > 0) {
+      mediaStack.push({ isHoverGate: false });
+    }
+
+    for (let i = 0; i < closes; i++) {
+      if (mediaStack.length > 0) mediaStack.pop();
+    }
+  });
+
+  assert.deepEqual(offenders, []);
+});
+
+test('§6: opacity/colour reveal transitions ease with --mv-wash, never --mv-lift', () => {
+  // mv-kit §6: "colour washes ease with --mv-wash; physical lifts
+  // (transform) ease with --mv-lift — the two easings are not
+  // interchangeable". An `opacity` reveal-on-hover is a wash in the kit's
+  // own vocabulary (see obsidian-portal's --portal-wash-motion split,
+  // commit 389d564), not a transform lift — so no `transition: opacity …`
+  // declaration in this file may reference --mv-lift.
+  const code = stripComments(css);
+  const lines = code.split('\n');
+
+  const offenders = lines
+    .map((line, idx) => ({ line: line.trim(), n: idx + 1 }))
+    .filter(({ line }) => /transition:\s*opacity\b/.test(line) && /--mv-lift/.test(line));
+
+  assert.deepEqual(offenders, []);
+});
