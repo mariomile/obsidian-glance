@@ -1,4 +1,4 @@
-import { createActions } from './card-actions.ts';
+import { createActions, createInlineEditor } from './card-actions.ts';
 import type { CardContext } from './card-context.ts';
 import { createMarker } from './card-marker.ts';
 import { domainLabel } from './link-source.ts';
@@ -33,6 +33,33 @@ function createSkeleton(container: HTMLElement, context: CardContext): void {
   const marker = createMarker(context, toggleHandler(context));
   if (marker) container.append(marker);
   container.append(body, media);
+}
+
+/** Opens the inline editor at the top of the card body. Undefined without a
+ *  writer, which is what leaves Reading mode without an edit button. */
+function startEdit(context: CardContext, body: HTMLElement): (() => void) | undefined {
+  const writer = context.write;
+  if (!writer) return undefined;
+
+  return () => {
+    if (body.querySelector('.glance-card__edit')) return;
+    const input: HTMLInputElement = createInlineEditor(
+      context.line.url,
+      (url) => {
+        input.remove();
+        context.onEditEnd?.();
+        writer.setLink(url);
+      },
+      () => {
+        input.remove();
+        context.onEditEnd?.();
+      },
+    );
+    body.prepend(input);
+    context.onEditBegin?.();
+    input.focus();
+    input.select();
+  };
 }
 
 /** Reading mode has no writer, which is what leaves its checkbox inert — the
@@ -120,7 +147,7 @@ function renderMetadata(
   if (marker) container.append(marker);
   container.append(body);
   if (media) container.append(media);
-  container.append(createActions(context, host), link);
+  container.append(createActions(context, host, startEdit(context, body)), link);
 }
 
 export function mountCard(

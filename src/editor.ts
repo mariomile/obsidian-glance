@@ -54,7 +54,16 @@ class LinkCardWidget extends WidgetType {
     wrapper.style.setProperty('--glance-indent', String(this.context.line.indentLevel));
     // The writer resolves its own position at click time, so it is bound to
     // the wrapper rather than to a position captured now.
-    const context: CardContext = { ...this.context, write: bindWriter(view, wrapper) };
+    const context: CardContext = {
+      ...this.context,
+      write: bindWriter(view, wrapper),
+      // Effects only, never changes — the decoration pipeline stays pure.
+      onEditBegin: () => {
+        const pos = view.posAtDOM(wrapper);
+        view.dispatch({ effects: beginInlineEdit.of(view.state.doc.lineAt(pos).from) });
+      },
+      onEditEnd: () => view.dispatch({ effects: endInlineEdit.of(null) }),
+    };
     this.unmount.set(wrapper, mountCard(wrapper, context, this.host));
     return wrapper;
   }
@@ -71,6 +80,28 @@ class LinkCardWidget extends WidgetType {
 
 export const refreshGlanceEffect = StateEffect.define<null>();
 
+export const beginInlineEdit = StateEffect.define<number>();
+export const endInlineEdit = StateEffect.define<null>();
+
+/**
+ * The `from` of the line whose card is being edited inline.
+ *
+ * Without it, any transaction moving the selection onto that line would hit
+ * the lineHasSelection bailout below, drop the decoration and unmount the card
+ * mid-typing. The edit state itself stays in the DOM — the widget's `eq()`
+ * ignores it, so CodeMirror keeps the existing node and the input survives.
+ */
+export const editingLineField = StateField.define<number | null>({
+  create: () => null,
+  update(value, transaction) {
+    for (const effect of transaction.effects) {
+      if (effect.is(beginInlineEdit)) return effect.value;
+      if (effect.is(endInlineEdit)) return null;
+    }
+    return value === null ? null : transaction.changes.mapPos(value);
+  },
+});
+
 function lineHasSelection(state: EditorState, from: number, to: number): boolean {
   return state.selection.ranges.some((range) => {
     if (range.empty) return range.head >= from && range.head <= to;
@@ -86,7 +117,11 @@ function lineDecoration(
   host: CardHost,
 ): Range<Decoration> | null {
   const line = parseGlanceLine(text);
-  if (!line || lineHasSelection(state, lineFrom, lineTo)) return null;
+  if (!line) return null;
+  // A line being edited inline keeps its card even when the selection lands on
+  // it: the input lives inside that card.
+  const editing = state.field(editingLineField, false) === lineFrom;
+  if (!editing && lineHasSelection(state, lineFrom, lineTo)) return null;
 
   const context: CardContext = {
     line,
@@ -132,6 +167,12 @@ function touchedLineRanges(transaction: Transaction): { from: number; to: number
     push(transaction.changes.mapPos(range.from), transaction.changes.mapPos(range.to));
   }
   for (const range of transaction.state.selection.ranges) push(range.from, range.to);
+  // Both editing positions, so beginning and ending an inline edit re-parses
+  // the line whose bailout behaviour just changed.
+  const wasEditing = transaction.startState.field(editingLineField, false);
+  const isEditing = transaction.state.field(editingLineField, false);
+  if (wasEditing != null) push(transaction.changes.mapPos(wasEditing), transaction.changes.mapPos(wasEditing));
+  if (isEditing != null) push(isEditing, isEditing);
 
   touched.sort((a, b) => a.from - b.from);
   const merged: { from: number; to: number }[] = [];
@@ -162,7 +203,12 @@ function updateDecorations(
   // Obsidian may move the editor selection through transaction shapes that do
   // not expose an explicit `selection` spec, so compare the states directly.
   const selectionChanged = !transaction.startState.selection.eq(transaction.state.selection);
-  if (!transaction.docChanged && !selectionChanged) return decorations;
+  // An inline edit starting or ending carries no doc or selection change, so
+  // without this the effect-only transaction would be swallowed here.
+  const editingChanged =
+    transaction.startState.field(editingLineField, false) !==
+    transaction.state.field(editingLineField, false);
+  if (!transaction.docChanged && !selectionChanged && !editingChanged) return decorations;
 
   // Re-parse only the touched lines; every other decoration is carried over
   // by position mapping. This keeps typing O(edited lines), not O(document).
@@ -187,6 +233,12 @@ function updateDecorations(
 }
 
 export function glanceEditorExtension(host: CardHost): Extension {
+  // editingLineField first: the decoration field reads it during its own
+  // `create`, so it has to be initialised by then.
+  return [editingLineField, decorationField(host)];
+}
+
+function decorationField(host: CardHost): Extension {
   return StateField.define<DecorationSet>({
     create: (state) => buildDecorations(state, host),
     update: (decorations, transaction) => updateDecorations(decorations, transaction, host),

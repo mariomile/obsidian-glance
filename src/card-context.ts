@@ -32,6 +32,9 @@ export interface CardContext {
   editable: boolean;
   /** Present only when `editable`. */
   write?: CardWriter;
+  /** Tells the editor to hold this line's card while its input has focus. */
+  onEditBegin?: () => void;
+  onEditEnd?: () => void;
 }
 
 export function resolveLayout(line: GlanceLine, settings: GlanceSettings): CardLayout {

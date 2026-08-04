@@ -46,10 +46,18 @@ test('line-write.ts is the only module that dispatches a document change', async
   const writeSource = await readFile(lineWriteSourceUrl, 'utf8');
   assert.match(writeSource, /view\.dispatch\(\{\s*changes:/);
 
-  // card-actions.ts does not exist yet; the catch makes this assertion pass
-  // over a missing file now and start guarding it the moment it lands.
   for (const url of [cardSourceUrl, cardActionsSourceUrl, cardMarkerSourceUrl]) {
-    const source = await readFile(url, 'utf8').catch(() => '');
+    const source = await readFile(url, 'utf8');
     assert.doesNotMatch(source, /\.dispatch\(/, `unexpected dispatch in ${url.pathname}`);
   }
+});
+
+test('editor.ts dispatches effects only, never document changes', async () => {
+  // editor.ts gained a dispatch with inline editing, but only of effects: the
+  // `changes:` guard in the first test is what keeps that honest, and this
+  // pairs the two assertions at the point where dispatch actually appears.
+  const source = await readFile(editorSourceUrl, 'utf8');
+
+  assert.match(source, /view\.dispatch\(\{\s*effects:/);
+  assert.doesNotMatch(source, /\bchanges\s*:/);
 });

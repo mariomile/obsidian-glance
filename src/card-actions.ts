@@ -56,6 +56,51 @@ export function createActions(
   return pill;
 }
 
+/**
+ * The inline link editor: an input over the card body holding the current URL.
+ *
+ * Focus works because CodeMirror sets `contentEditable = "false"` on widget
+ * wrappers, and form controls inside such an island behave normally. Keystrokes
+ * are stopped from propagating, otherwise they would also reach CodeMirror's
+ * own key handling underneath.
+ */
+export function createInlineEditor(
+  url: string,
+  onCommit: (url: string) => void,
+  onCancel: () => void,
+): HTMLInputElement {
+  const input = document.createElement('input');
+  input.type = 'text';
+  input.className = 'glance-card__edit';
+  input.value = url;
+  input.spellcheck = false;
+  input.setAttribute('aria-label', 'Link URL');
+
+  let settled = false;
+  const settle = (commit: boolean): void => {
+    if (settled) return;
+    settled = true;
+    if (commit) onCommit(input.value);
+    else onCancel();
+  };
+
+  input.addEventListener('keydown', (event) => {
+    event.stopPropagation();
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      settle(true);
+    } else if (event.key === 'Escape') {
+      event.preventDefault();
+      settle(false);
+    }
+  });
+  input.addEventListener('blur', () => settle(false));
+  // The whole card surface is an anchor; a click in the input must not open it.
+  input.addEventListener('click', (event) => event.stopPropagation());
+
+  return input;
+}
+
 function action(
   name: string,
   icon: string,

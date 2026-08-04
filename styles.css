@@ -130,6 +130,22 @@ li > .glance-reading-card {
   justify-content: flex-start;
 }
 
+/* The inline link editor, prepended into the body so title and footer stay
+   visible underneath and the card keeps its shape while you type. */
+.glance-card__edit {
+  z-index: 2;
+  width: 100%;
+  min-width: 0;
+  margin-bottom: 4px;
+  padding: 4px 8px;
+  color: var(--text-normal);
+  font-family: var(--font-interface);
+  font-size: 14px;
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border-focus);
+  border-radius: var(--mv-r1, 7px);
+}
+
 .glance-card__title {
   display: -webkit-box;
   overflow: hidden;
