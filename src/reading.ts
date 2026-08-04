@@ -9,22 +9,26 @@ import { resolveLayout, type CardContext } from './card-context.ts';
 import { parseGlanceLine } from './link-source.ts';
 import type { GlanceLine } from './model.ts';
 
+/** Obsidian's own list chrome, which sits beside the anchor inside an <li>:
+ *  the bullet glyph span and the task checkbox. Neither is content, and
+ *  counting either as a sibling is what kept bullet items from ever becoming
+ *  cards in Reading mode. */
+function isListChrome(node: Node): boolean {
+  if (node instanceof HTMLInputElement) return true;
+  return node instanceof HTMLElement && node.hasClass('list-bullet');
+}
+
 function onlyExternalAnchor(container: HTMLElement): HTMLAnchorElement | null {
-  // A task <li> holds the native checkbox alongside the anchor. The checkbox
-  // stays exactly where Obsidian put it — Reading mode is read-only for
-  // Glance, and Obsidian's own checkbox already works — so it is ignored here
-  // rather than counted as a second child.
-  const elements = Array.from(container.children).filter(
-    (child) => !(child instanceof HTMLInputElement),
-  );
-  if (elements.length !== 1) return null;
-  const anchor = elements[0];
-  if (!(anchor instanceof HTMLAnchorElement)) return null;
-  if (!/^https?:\/\//i.test(anchor.href)) return null;
-  const meaningfulText = Array.from(container.childNodes)
-    .filter((node) => node !== anchor && !(node instanceof HTMLInputElement))
-    .some((node) => (node.textContent ?? '').trim().length > 0);
-  return meaningfulText ? null : anchor;
+  const anchors = Array.from(container.querySelectorAll<HTMLAnchorElement>(':scope > a'));
+  if (anchors.length !== 1) return null;
+  const anchor = anchors[0];
+  if (!anchor || !/^https?:\/\//i.test(anchor.href)) return null;
+
+  const hasOtherContent = Array.from(container.childNodes).some((node) => {
+    if (node === anchor || isListChrome(node)) return false;
+    return (node.textContent ?? '').trim().length > 0;
+  });
+  return hasOtherContent ? null : anchor;
 }
 
 /**
