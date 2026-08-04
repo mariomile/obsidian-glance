@@ -17,6 +17,7 @@ import { editorLivePreviewField } from 'obsidian';
 
 import { mountCard, type CardHost } from './card.ts';
 import { resolveLayout, type CardContext } from './card-context.ts';
+import { bindWriter } from './line-write.ts';
 import { parseGlanceLine } from './link-source.ts';
 
 class LinkCardWidget extends WidgetType {
@@ -45,13 +46,16 @@ class LinkCardWidget extends WidgetType {
       this.showThumbnail === other.showThumbnail;
   }
 
-  toDOM(): HTMLElement {
+  toDOM(view: EditorView): HTMLElement {
     const wrapper = document.createElement('div');
     wrapper.className = 'glance-editor-card';
     // Live Preview replaces the whole line, indent included, so the nesting
     // has to be re-applied to the wrapper.
     wrapper.style.setProperty('--glance-indent', String(this.context.line.indentLevel));
-    this.unmount.set(wrapper, mountCard(wrapper, this.context, this.host));
+    // The writer resolves its own position at click time, so it is bound to
+    // the wrapper rather than to a position captured now.
+    const context: CardContext = { ...this.context, write: bindWriter(view, wrapper) };
+    this.unmount.set(wrapper, mountCard(wrapper, context, this.host));
     return wrapper;
   }
 
@@ -82,12 +86,7 @@ function lineDecoration(
   host: CardHost,
 ): Range<Decoration> | null {
   const line = parseGlanceLine(text);
-  // The parser recognises task lines, but a block decoration swallows the whole
-  // line and the card cannot redraw the checkbox yet. Rendering one here would
-  // leave the task uncheckable, so tasks stay unrendered until the card owns a
-  // checkbox of its own. Removed when that lands.
-  if (!line || line.list === 'task') return null;
-  if (lineHasSelection(state, lineFrom, lineTo)) return null;
+  if (!line || lineHasSelection(state, lineFrom, lineTo)) return null;
 
   const context: CardContext = {
     line,

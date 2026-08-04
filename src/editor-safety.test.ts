@@ -33,3 +33,23 @@ test('card.ts never restyles the wrapper element it is handed', async () => {
   assert.doesNotMatch(source, /\bwrapper\.classList\b/);
   assert.match(source, /\bwrapper\.append\(/);
 });
+
+const lineWriteSourceUrl = new URL('./line-write.ts', import.meta.url);
+const cardActionsSourceUrl = new URL('./card-actions.ts', import.meta.url);
+const cardMarkerSourceUrl = new URL('./card-marker.ts', import.meta.url);
+
+test('line-write.ts is the only module that dispatches a document change', async () => {
+  // README's source-pure promise rests on the decoration pipeline never
+  // mutating the document. Confining every dispatch to one module is what
+  // makes that auditable — and is why the `changes:` guard on editor.ts above
+  // can stay in place while the card gained write actions.
+  const writeSource = await readFile(lineWriteSourceUrl, 'utf8');
+  assert.match(writeSource, /view\.dispatch\(\{\s*changes:/);
+
+  // card-actions.ts does not exist yet; the catch makes this assertion pass
+  // over a missing file now and start guarding it the moment it lands.
+  for (const url of [cardSourceUrl, cardActionsSourceUrl, cardMarkerSourceUrl]) {
+    const source = await readFile(url, 'utf8').catch(() => '');
+    assert.doesNotMatch(source, /\.dispatch\(/, `unexpected dispatch in ${url.pathname}`);
+  }
+});

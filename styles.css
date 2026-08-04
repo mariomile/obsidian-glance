@@ -114,6 +114,13 @@ li > .glance-reading-card {
   color: var(--text-muted);
 }
 
+/* A completed task reads as done at a glance, the same way Obsidian's own
+   task-list-item does. */
+.glance-card.is-task-checked .glance-card__title {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
 /* A taller image makes the card taller than its text block, and a centred body
    then pushes the title down away from the top-pinned marker. In a list item
    the text starts at the top and a taller image simply runs on below it, so

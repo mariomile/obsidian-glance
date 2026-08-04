@@ -31,9 +31,17 @@ function createSkeleton(container: HTMLElement, context: CardContext): void {
   }
   // The slot is reserved while loading too, so the card does not shift
   // sideways when metadata lands.
-  const marker = createMarker(context);
+  const marker = createMarker(context, toggleHandler(context));
   if (marker) container.append(marker);
   container.append(body, media);
+}
+
+/** Reading mode has no writer, which is what leaves its checkbox inert — the
+ *  native one Obsidian rendered is still there and still works. */
+function toggleHandler(context: CardContext): ((checked: boolean) => void) | undefined {
+  const writer = context.write;
+  if (!writer) return undefined;
+  return (checked) => writer.setChecked(checked);
 }
 
 function createImage(metadata: LinkMetadata): HTMLElement {
@@ -60,7 +68,9 @@ function renderMetadata(
   container.replaceChildren();
   container.className = `glance-card${metadata.degraded ? ' is-degraded' : ''}${
     compact ? ' is-compact' : ''
-  }${context.marker === 'none' ? '' : ' is-listed'}`;
+  }${context.marker === 'none' ? '' : ' is-listed'}${
+    context.marker === 'task' && context.line.checked ? ' is-task-checked' : ''
+  }`;
   container.setAttribute('aria-label', metadata.title);
 
   const body = document.createElement('div');
@@ -141,7 +151,7 @@ function renderMetadata(
   // DOM order is visual order: body, then media. The stylesheet no longer
   // reorders them with `order`.
   const media = host.settings().showThumbnail && metadata.image ? createImage(metadata) : null;
-  const marker = createMarker(context);
+  const marker = createMarker(context, toggleHandler(context));
   if (marker) container.append(marker);
   container.append(body);
   if (media) container.append(media);
