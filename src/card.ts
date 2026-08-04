@@ -1,6 +1,7 @@
 import { setIcon } from 'obsidian';
 
 import type { CardContext } from './card-context.ts';
+import { createMarker } from './card-marker.ts';
 import { domainLabel } from './link-source.ts';
 import type { GlanceSettings, LinkMetadata } from './model.ts';
 import type { MetadataStore } from './store.ts';
@@ -13,7 +14,9 @@ export interface CardHost {
 function createSkeleton(container: HTMLElement, context: CardContext): void {
   const compact = context.layout === 'compact';
   container.replaceChildren();
-  container.className = `glance-card is-loading${compact ? ' is-compact' : ''}`;
+  container.className = `glance-card is-loading${compact ? ' is-compact' : ''}${
+    context.marker === 'none' ? '' : ' is-listed'
+  }`;
   container.setAttribute('aria-label', `Loading preview for ${domainLabel(context.line.url)}`);
 
   const media = document.createElement('div');
@@ -26,6 +29,10 @@ function createSkeleton(container: HTMLElement, context: CardContext): void {
     line.style.width = width;
     body.append(line);
   }
+  // The slot is reserved while loading too, so the card does not shift
+  // sideways when metadata lands.
+  const marker = createMarker(context);
+  if (marker) container.append(marker);
   container.append(body, media);
 }
 
@@ -51,7 +58,9 @@ function renderMetadata(
 ): void {
   const compact = context.layout === 'compact';
   container.replaceChildren();
-  container.className = `glance-card${metadata.degraded ? ' is-degraded' : ''}${compact ? ' is-compact' : ''}`;
+  container.className = `glance-card${metadata.degraded ? ' is-degraded' : ''}${
+    compact ? ' is-compact' : ''
+  }${context.marker === 'none' ? '' : ' is-listed'}`;
   container.setAttribute('aria-label', metadata.title);
 
   const body = document.createElement('div');
@@ -132,6 +141,8 @@ function renderMetadata(
   // DOM order is visual order: body, then media. The stylesheet no longer
   // reorders them with `order`.
   const media = host.settings().showThumbnail && metadata.image ? createImage(metadata) : null;
+  const marker = createMarker(context);
+  if (marker) container.append(marker);
   container.append(body);
   if (media) container.append(media);
   container.append(copy, refresh, link);

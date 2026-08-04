@@ -83,6 +83,46 @@ li > .glance-reading-card {
   gap: 5px;
 }
 
+/* The list marker the block decoration swallowed, redrawn by the card.
+   `align-self: flex-start` is load-bearing: as a stretched flex item the slot
+   would span the whole body and centre the bullet against the description
+   instead of the title. Pinned to the top and given exactly one title line of
+   height, the marker centres on that first line — where a list marker belongs. */
+.glance-card__marker {
+  display: flex;
+  flex: 0 0 auto;
+  align-self: flex-start;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 21px;
+  color: var(--text-faint);
+  font-family: var(--font-interface);
+  font-size: 13px;
+  line-height: 1.25;
+}
+
+.glance-card__marker--bullet::before {
+  content: '';
+  width: 5px;
+  height: 5px;
+  background: currentColor;
+  border-radius: 50%;
+}
+
+.glance-card__marker--task {
+  color: var(--text-muted);
+}
+
+/* A taller image makes the card taller than its text block, and a centred body
+   then pushes the title down away from the top-pinned marker. In a list item
+   the text starts at the top and a taller image simply runs on below it, so
+   both share one origin and the marker lines up with the title by
+   construction. */
+.glance-card.is-listed .glance-card__body {
+  justify-content: flex-start;
+}
+
 .glance-card__title {
   display: -webkit-box;
   overflow: hidden;
