@@ -1,7 +1,7 @@
 import { MarkdownView, Notice, Plugin } from 'obsidian';
 
 import { glanceEditorExtension, refreshGlanceEffect } from './editor.ts';
-import { parseStandaloneLink } from './link-source.ts';
+import { parseGlanceLine } from './link-source.ts';
 import { fetchLinkMetadata } from './metadata.ts';
 import {
   DEFAULT_SETTINGS,
@@ -46,7 +46,7 @@ export default class GlancePlugin extends Plugin {
       id: 'refresh-card-under-cursor',
       name: 'Refresh card under cursor',
       editorCallback: (editor) => {
-        const source = parseStandaloneLink(editor.getLine(editor.getCursor().line));
+        const source = parseGlanceLine(editor.getLine(editor.getCursor().line));
         if (!source) {
           new Notice('Glance: place the cursor on a standalone web link');
           return;

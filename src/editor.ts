@@ -16,7 +16,7 @@ import {
 import { editorLivePreviewField } from 'obsidian';
 
 import { mountCard, type CardHost } from './card.ts';
-import { parseStandaloneLink } from './link-source.ts';
+import { parseGlanceLine } from './link-source.ts';
 import type { LinkSource } from './model.ts';
 
 class LinkCardWidget extends WidgetType {
@@ -74,8 +74,13 @@ function lineDecoration(
   text: string,
   host: CardHost,
 ): Range<Decoration> | null {
-  const source = parseStandaloneLink(text);
-  if (!source || lineHasSelection(state, lineFrom, lineTo)) return null;
+  const source = parseGlanceLine(text);
+  // The parser recognises task lines, but a block decoration swallows the whole
+  // line and the card cannot redraw the checkbox yet. Rendering one here would
+  // leave the task uncheckable, so tasks stay unrendered until the card owns a
+  // checkbox of its own. Removed when that lands.
+  if (!source || source.list === 'task') return null;
+  if (lineHasSelection(state, lineFrom, lineTo)) return null;
   // `Decoration.replace` is visual only: the URL stays in EditorState and
   // on disk. Using CodeMirror's native replacement keeps the hidden range
   // cursor-addressable, unlike applying `display: none` to its text DOM.
