@@ -1,6 +1,7 @@
 import { Notice, PluginSettingTab, Setting, type App } from 'obsidian';
 
 import type GlancePlugin from './main.ts';
+import type { CardLayout } from './model.ts';
 
 export class GlanceSettingTab extends PluginSettingTab {
   constructor(app: App, private readonly plugin: GlancePlugin) {
@@ -34,6 +35,19 @@ export class GlanceSettingTab extends PluginSettingTab {
         .setValue(this.plugin.settings.showThumbnail)
         .onChange(async (value) => {
           this.plugin.settings.showThumbnail = value;
+          await this.plugin.savePluginData();
+          this.plugin.refreshEditors();
+        }));
+
+    new Setting(containerEl)
+      .setName('Default card size')
+      .setDesc('Override a single line with %%glance:compact%% or %%glance:expand%%.')
+      .addDropdown((dropdown) => dropdown
+        .addOption('expanded', 'Expanded')
+        .addOption('compact', 'Compact')
+        .setValue(this.plugin.settings.defaultCardLayout)
+        .onChange(async (value) => {
+          this.plugin.settings.defaultCardLayout = value as CardLayout;
           await this.plugin.savePluginData();
           this.plugin.refreshEditors();
         }));

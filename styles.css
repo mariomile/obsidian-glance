@@ -10,9 +10,18 @@ li > .glance-reading-card {
   margin: 0.15rem 0;
 }
 
+/* Live Preview replaces the whole line, indent included, so the nesting has to
+   be re-applied here. Reading mode keeps its real <li> nesting and needs none
+   of this. */
+.glance-editor-card {
+  padding-left: calc(var(--glance-indent, 0) * 1.7em);
+}
+
 /* Natural, borderless look: the card is just content on the page. The only
    surface is a soft hover wash; geometry and states, no decorative chrome. */
 .glance-card {
+  --glance-media-w: 150px;
+
   position: relative;
   display: flex;
   gap: 14px;
@@ -50,9 +59,8 @@ li > .glance-reading-card {
 
 .glance-card__media,
 .glance-card__skeleton-media {
-  order: 2;
-  flex: 0 0 150px;
-  width: 150px;
+  flex: 0 0 var(--glance-media-w);
+  width: var(--glance-media-w);
   min-height: 64px;
   overflow: hidden;
   background: var(--background-modifier-hover);
@@ -192,6 +200,26 @@ li > .glance-reading-card {
 
 .glance-card.is-degraded {
   min-height: 56px;
+}
+
+/* Compact keeps the image and narrows it rather than dropping it: a link row
+   still reads as a card, just one line tall. Ordered after .is-degraded so a
+   degraded compact card takes the compact height on source order, never on an
+   !important. */
+.glance-card.is-compact {
+  --glance-media-w: 64px;
+
+  min-height: 52px;
+}
+
+.glance-card.is-compact .glance-card__title {
+  font-size: 15px;
+  -webkit-line-clamp: 1;
+}
+
+.glance-card.is-compact .glance-card__media,
+.glance-card.is-compact .glance-card__skeleton-media {
+  min-height: 36px;
 }
 
 .glance-card__skeleton-media,

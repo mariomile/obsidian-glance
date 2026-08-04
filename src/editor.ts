@@ -16,8 +16,8 @@ import {
 import { editorLivePreviewField } from 'obsidian';
 
 import { mountCard, type CardHost } from './card.ts';
+import { resolveLayout, type CardContext } from './card-context.ts';
 import { parseGlanceLine } from './link-source.ts';
-import type { LinkSource } from './model.ts';
 
 class LinkCardWidget extends WidgetType {
   private unmount = new WeakMap<HTMLElement, () => void>();
@@ -25,7 +25,7 @@ class LinkCardWidget extends WidgetType {
   private readonly showThumbnail: boolean;
 
   constructor(
-    private readonly source: LinkSource,
+    private readonly context: CardContext,
     private readonly host: CardHost,
   ) {
     super();
@@ -35,8 +35,12 @@ class LinkCardWidget extends WidgetType {
   }
 
   eq(other: LinkCardWidget): boolean {
-    return this.source.url === other.source.url &&
-      this.source.label === other.source.label &&
+    return this.context.line.url === other.context.line.url &&
+      this.context.line.label === other.context.line.label &&
+      this.context.layout === other.context.layout &&
+      this.context.marker === other.context.marker &&
+      this.context.line.checked === other.context.line.checked &&
+      this.context.line.indentLevel === other.context.line.indentLevel &&
       this.showDescription === other.showDescription &&
       this.showThumbnail === other.showThumbnail;
   }
@@ -44,7 +48,10 @@ class LinkCardWidget extends WidgetType {
   toDOM(): HTMLElement {
     const wrapper = document.createElement('div');
     wrapper.className = 'glance-editor-card';
-    this.unmount.set(wrapper, mountCard(wrapper, this.source, this.host));
+    // Live Preview replaces the whole line, indent included, so the nesting
+    // has to be re-applied to the wrapper.
+    wrapper.style.setProperty('--glance-indent', String(this.context.line.indentLevel));
+    this.unmount.set(wrapper, mountCard(wrapper, this.context, this.host));
     return wrapper;
   }
 
@@ -74,18 +81,26 @@ function lineDecoration(
   text: string,
   host: CardHost,
 ): Range<Decoration> | null {
-  const source = parseGlanceLine(text);
+  const line = parseGlanceLine(text);
   // The parser recognises task lines, but a block decoration swallows the whole
   // line and the card cannot redraw the checkbox yet. Rendering one here would
   // leave the task uncheckable, so tasks stay unrendered until the card owns a
   // checkbox of its own. Removed when that lands.
-  if (!source || source.list === 'task') return null;
+  if (!line || line.list === 'task') return null;
   if (lineHasSelection(state, lineFrom, lineTo)) return null;
+
+  const context: CardContext = {
+    line,
+    layout: resolveLayout(line, host.settings()),
+    marker: line.list,
+    editable: true,
+  };
+
   // `Decoration.replace` is visual only: the URL stays in EditorState and
   // on disk. Using CodeMirror's native replacement keeps the hidden range
   // cursor-addressable, unlike applying `display: none` to its text DOM.
   return Decoration.replace({
-    widget: new LinkCardWidget(source, host),
+    widget: new LinkCardWidget(context, host),
     block: true,
   }).range(lineFrom, lineTo);
 }

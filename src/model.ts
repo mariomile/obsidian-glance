@@ -44,6 +44,7 @@ export interface LinkMetadata {
 export interface GlanceSettings {
   showDescription: boolean;
   showThumbnail: boolean;
+  defaultCardLayout: CardLayout;
   cacheTtlHours: number;
   maxCacheEntries: number;
 }
@@ -56,6 +57,7 @@ export interface PersistedGlanceData {
 export const DEFAULT_SETTINGS: GlanceSettings = {
   showDescription: true,
   showThumbnail: true,
+  defaultCardLayout: 'expanded',
   cacheTtlHours: 168,
   maxCacheEntries: 400,
 };

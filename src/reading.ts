@@ -1,7 +1,8 @@
 import { MarkdownRenderChild, type MarkdownPostProcessor } from 'obsidian';
 
 import { mountCard, type CardHost } from './card.ts';
-import type { LinkSource } from './model.ts';
+import { resolveLayout, type CardContext } from './card-context.ts';
+import type { GlanceLine } from './model.ts';
 
 function onlyExternalAnchor(container: HTMLElement): HTMLAnchorElement | null {
   if (container.children.length !== 1) return null;
@@ -19,14 +20,14 @@ class ReadingCardMount extends MarkdownRenderChild {
 
   constructor(
     private readonly element: HTMLElement,
-    private readonly source: LinkSource,
+    private readonly context: CardContext,
     private readonly host: CardHost,
   ) {
     super(element);
   }
 
   onload(): void {
-    this.unsubscribe = mountCard(this.element, this.source, this.host);
+    this.unsubscribe = mountCard(this.element, this.context, this.host);
   }
 
   onunload(): void {
@@ -41,12 +42,26 @@ function mountFor(
 ): { card: HTMLElement; mount: ReadingCardMount } {
   const card = document.createElement('div');
   card.className = 'glance-reading-card';
-  const label = anchor.textContent?.trim();
-  const source: LinkSource = {
+  const text = anchor.textContent?.trim();
+  const label = text && text !== anchor.href ? text : undefined;
+  const line: GlanceLine = {
     url: anchor.href,
-    label: label && label !== anchor.href ? label : undefined,
+    ...(label ? { label } : {}),
+    prefix: '',
+    linkText: anchor.href,
+    suffix: '',
+    indentLevel: 0,
+    list: 'none',
   };
-  return { card, mount: new ReadingCardMount(card, source, host) };
+  const context: CardContext = {
+    line,
+    layout: resolveLayout(line, host.settings()),
+    // Obsidian's own bullet and checkbox stay in place here, so the card
+    // draws neither.
+    marker: 'none',
+    editable: false,
+  };
+  return { card, mount: new ReadingCardMount(card, context, host) };
 }
 
 export function glanceReadingProcessor(host: CardHost): MarkdownPostProcessor {
