@@ -12,7 +12,9 @@ Part of the marioverse Obsidian plugin suite.
 
 ## What makes it different
 
-- Source-pure: a raw URL or standard Markdown link stays unchanged.
+- Source-pure rendering: displaying a card never rewrites your Markdown.
+- Editable in place: the card's own controls — edit link, card size, task
+  checkbox — write back to the line, and only when you click them.
 - Native editing: the card becomes editable Markdown when its line is active.
 - Theme-aware: all colors and typography inherit Obsidian theme tokens.
 - Local-first: metadata is fetched directly and cached in plugin data.
@@ -31,6 +33,40 @@ Standard links are supported too:
 ```
 
 Inline links inside sentences are intentionally left unchanged.
+
+### Card controls
+
+Hovering a card reveals its actions: edit the link, copy it, refresh the
+metadata, and switch the card between expanded and compact. Editing and
+resizing are Live Preview only — in Reading mode a card is display-only.
+
+### Card size
+
+Cards render at the size set by **Default card size** in settings. Override a
+single line by appending a marker:
+
+```markdown
+https://obsidian.md %%glance:compact%%
+https://obsidian.md %%glance:expand%%
+```
+
+The card's size toggle writes these for you. `%%…%%` is an Obsidian comment,
+so it never shows in Reading mode. A compact card keeps its image, just
+narrower, and drops the description.
+
+### Lists and tasks
+
+Links inside bullet, numbered and task items render as cards too:
+
+```markdown
+- https://obsidian.md
+- [ ] https://obsidian.md %%glance:compact%%
+```
+
+In Live Preview the card draws the list marker itself — CodeMirror replaces
+the whole line, so the original bullet or checkbox cannot be left standing —
+and ticking a card's checkbox rewrites just that one character in the line. In
+Reading mode Obsidian's own marker and checkbox stay in place.
 
 ## Commands
 
