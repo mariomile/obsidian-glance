@@ -131,16 +131,22 @@ function renderMetadata(
   container.append(body, copy, refresh, link);
 }
 
-export function mountCard(container: HTMLElement, source: LinkSource, host: CardHost): () => void {
+export function mountCard(wrapper: HTMLElement, source: LinkSource, host: CardHost): () => void {
+  // The card is a child element this module owns outright. The wrapper belongs
+  // to the caller and carries its own layout class, which is why nothing here
+  // ever touches the wrapper's class list.
+  const card = document.createElement('div');
+  wrapper.append(card);
+
   const current = host.store.get(source.url);
-  if (current) renderMetadata(container, current, host, source);
-  else createSkeleton(container, source);
+  if (current) renderMetadata(card, current, host, source);
+  else createSkeleton(card, source);
 
   const unsubscribe = host.store.subscribe(source.url, (metadata) => {
-    if (container.isConnected) renderMetadata(container, metadata, host, source);
+    if (card.isConnected) renderMetadata(card, metadata, host, source);
   });
   void host.store.ensure(source.url, source.label).then((metadata) => {
-    if (container.isConnected) renderMetadata(container, metadata, host, source);
+    if (card.isConnected) renderMetadata(card, metadata, host, source);
   });
   return unsubscribe;
 }

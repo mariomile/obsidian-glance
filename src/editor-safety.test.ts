@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const editorSourceUrl = new URL('./editor.ts', import.meta.url);
+const cardSourceUrl = new URL('./card.ts', import.meta.url);
 
 test('editor rendering never changes Markdown and provides block replacements from state', async () => {
   const source = await readFile(editorSourceUrl, 'utf8');
@@ -19,4 +20,16 @@ test('editor rendering never changes Markdown and provides block replacements fr
     source,
     /update:\s*\(decorations, transaction\)\s*=>\s*updateDecorations\(decorations, transaction, host\)/s,
   );
+});
+
+test('card.ts never restyles the wrapper element it is handed', async () => {
+  const source = await readFile(cardSourceUrl, 'utf8');
+
+  // The card owns a child element it creates itself; the wrapper belongs to
+  // the caller (glance-editor-card / glance-reading-card) and carries the
+  // layout classes. Assigning to the wrapper's className wipes them on every
+  // render — the bug this guard exists to prevent from returning.
+  assert.doesNotMatch(source, /\bwrapper\.className\s*=/);
+  assert.doesNotMatch(source, /\bwrapper\.classList\b/);
+  assert.match(source, /\bwrapper\.append\(/);
 });

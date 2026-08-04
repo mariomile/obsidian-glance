@@ -17,7 +17,6 @@ li > .glance-reading-card {
   display: flex;
   gap: 14px;
   min-height: 84px;
-  margin: 0.35rem 0;
   padding: 10px 12px;
   overflow: hidden;
   color: var(--text-normal);
@@ -27,13 +26,6 @@ li > .glance-reading-card {
   transition:
     background-color var(--cosmos-t-fast, 140ms) var(--mv-wash, cubic-bezier(0.25, 1, 0.5, 1)),
     transform var(--cosmos-t-fast, 140ms) var(--mv-lift, cubic-bezier(0.22, 1, 0.36, 1));
-}
-
-/* Obsidian core forces `.cm-content > *` to display:block (specificity 0,3,0),
-   which flattens the card's flex row in Live Preview. Mirror that selector plus
-   the card class (0,4,0) so the flex layout — and thus the media `order` — wins. */
-.markdown-source-view.mod-cm6 .cm-content > .glance-card {
-  display: flex;
 }
 
 /* mv-kit §6: a custom :hover on a phone-reachable element must live inside
