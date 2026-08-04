@@ -187,18 +187,19 @@ li > .glance-reading-card {
   border-radius: inherit;
 }
 
-.glance-card__refresh,
-.glance-card__copy {
+/* One surface for every action. Four independently shadowed 28px boxes would
+   checkerboard 122px of artwork; a single pill reads as one control cluster
+   and carries one background and one shadow instead of four. */
+.glance-card__actions {
   position: absolute;
   top: 8px;
+  right: 8px;
   z-index: 2;
-  width: 28px;
-  height: 28px;
-  padding: 6px;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
   opacity: 0;
-  color: var(--text-muted);
   background: var(--background-primary);
-  border: none;
   border-radius: var(--mv-r1, 7px);
   box-shadow: var(--shadow-s, 0 1px 2px rgb(0 0 0 / 12%));
   /* mv-kit §6 fix: an opacity reveal is a colour/opacity wash in the kit's
@@ -208,35 +209,44 @@ li > .glance-reading-card {
   transition: opacity var(--cosmos-t-fast, 140ms) var(--mv-wash, cubic-bezier(0.25, 1, 0.5, 1));
 }
 
-.glance-card__refresh {
-  right: 8px;
+/* A compact card is barely taller than the pill, so a corner anchor would read
+   as an overhang. Centred, it reads as an attached control. */
+.glance-card.is-compact .glance-card__actions {
+  top: 50%;
+  transform: translateY(-50%);
 }
 
-.glance-card__copy {
-  right: 44px;
+/* The pill owns the surface; the buttons inside are bare geometry, keeping
+   clickable-icon only for its per-button hover feedback. */
+.glance-card__action {
+  width: 28px;
+  height: 28px;
+  padding: 6px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
-.glance-card__refresh:focus-visible,
-.glance-card__copy:focus-visible {
+.glance-card__actions:focus-within {
   opacity: 1;
 }
 
-/* mv-kit §6: gated, see the .glance-card:hover comment above — these buttons
-   are forced visible (opacity: 1) on phone via the @media (max-width: 600px)
+/* mv-kit §6: gated, see the .glance-card:hover comment above — the pill is
+   forced visible (opacity: 1) on phone via the @media (max-width: 600px)
    block below, so a stuck hover-triggered reveal here is directly reachable
    on touch otherwise. */
 @media (hover: hover) {
-  .glance-card:hover .glance-card__refresh,
-  .glance-card:hover .glance-card__copy {
+  .glance-card:hover .glance-card__actions {
     opacity: 1;
   }
 }
 
-.glance-card__copy.is-copied {
+.glance-card__action.is-copied {
   color: var(--text-success, var(--interactive-accent));
 }
 
-.glance-card__refresh.is-spinning svg {
+.glance-card__action.is-spinning svg {
   /* No --cosmos-t-* tier models a continuous spin *period* (all four are
      finite one-shot durations for transitions/entrances). Consumed here as
      --cosmos-t-spin in the suite's own token namespace — a forward
@@ -327,21 +337,22 @@ li > .glance-reading-card {
     font-size: 11px;
   }
 
-  .glance-card__refresh,
-  .glance-card__copy {
+  .glance-card__actions {
     opacity: 1;
   }
 
   /* mv-kit §2 MUST: every phone tap target reaches --cosmos-touch-min (44px).
-     The refresh/copy buttons stay visually 28px (growing the box would push
-     .glance-card__copy's `right: 44px` offset into overlap with its 28px
-     sibling) — the hit area extends via a transparent pseudo-element
-     centered on the button instead, same pattern as TabX wave 4's
-     .tabx-tab-close/.tabx-rail-action. Both buttons are already
-     `position: absolute` (base rule above), which is sufficient to anchor
-     the ::after child — no `position: relative` override needed here. */
-  .glance-card__refresh::after,
-  .glance-card__copy::after {
+     The buttons stay visually 28px — growing the boxes would widen the pill
+     past a compact card's image — so the hit area extends via a transparent
+     pseudo-element centred on each button instead, the same pattern as TabX
+     wave 4's .tabx-tab-close/.tabx-rail-action. Unlike the absolute boxes
+     this replaced, a button inside the pill is statically positioned, so it
+     needs its own containing block for the ::after to anchor to. */
+  .glance-card__action {
+    position: relative;
+  }
+
+  .glance-card__action::after {
     content: '';
     position: absolute;
     inset: calc((100% - var(--cosmos-touch-min, 44px)) / 2);
@@ -350,7 +361,8 @@ li > .glance-reading-card {
 
 @media (prefers-reduced-motion: reduce) {
   .glance-card,
-  .glance-card__refresh,
+  .glance-card__actions,
+  .glance-card__action,
   .glance-card__skeleton-media,
   .glance-card__skeleton-line {
     animation: none;

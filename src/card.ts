@@ -1,5 +1,4 @@
-import { setIcon } from 'obsidian';
-
+import { createActions } from './card-actions.ts';
 import type { CardContext } from './card-context.ts';
 import { createMarker } from './card-marker.ts';
 import { domainLabel } from './link-source.ts';
@@ -107,40 +106,6 @@ function renderMetadata(
   footer.append(site);
   body.append(footer);
 
-  const copy = document.createElement('button');
-  copy.type = 'button';
-  copy.className = 'glance-card__copy clickable-icon';
-  copy.setAttribute('aria-label', 'Copy link');
-  setIcon(copy, 'copy');
-  let copyResetHandle: number | undefined;
-  copy.addEventListener('click', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    void navigator.clipboard.writeText(context.line.url).then(() => {
-      copy.addClass('is-copied');
-      setIcon(copy, 'check');
-      window.clearTimeout(copyResetHandle);
-      copyResetHandle = window.setTimeout(() => {
-        copy.removeClass('is-copied');
-        setIcon(copy, 'copy');
-      }, 1200);
-    });
-  });
-
-  const refresh = document.createElement('button');
-  refresh.type = 'button';
-  refresh.className = 'glance-card__refresh clickable-icon';
-  refresh.setAttribute('aria-label', 'Refresh link preview');
-  setIcon(refresh, 'refresh-cw');
-  refresh.addEventListener('click', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    refresh.addClass('is-spinning');
-    void host.store.refresh(context.line.url, context.line.label).finally(() => {
-      refresh.removeClass('is-spinning');
-    });
-  });
-
   const link = document.createElement('a');
   link.className = 'glance-card__link';
   link.href = context.line.url;
@@ -155,7 +120,7 @@ function renderMetadata(
   if (marker) container.append(marker);
   container.append(body);
   if (media) container.append(media);
-  container.append(copy, refresh, link);
+  container.append(createActions(context, host), link);
 }
 
 export function mountCard(
