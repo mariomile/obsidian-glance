@@ -1,4 +1,4 @@
-import { createActions, createInlineEditor } from './card-actions.ts';
+import { createActions, createInlineEditor, createLoadingActions } from './card-actions.ts';
 import type { CardContext } from './card-context.ts';
 import { createMarker } from './card-marker.ts';
 import { domainLabel } from './link-source.ts';
@@ -10,7 +10,7 @@ export interface CardHost {
   settings: () => GlanceSettings;
 }
 
-function createSkeleton(container: HTMLElement, context: CardContext): void {
+function createSkeleton(container: HTMLElement, context: CardContext, host: CardHost): void {
   const compact = context.layout === 'compact';
   container.replaceChildren();
   container.className = `glance-card is-loading${compact ? ' is-compact' : ''}${
@@ -32,7 +32,7 @@ function createSkeleton(container: HTMLElement, context: CardContext): void {
   // sideways when metadata lands.
   const marker = createMarker(context, toggleHandler(context));
   if (marker) container.append(marker);
-  container.append(body, media);
+  container.append(body, media, createLoadingActions(context, host));
 }
 
 /** Opens the inline editor at the top of the card body. Undefined without a
@@ -164,7 +164,7 @@ export function mountCard(
   const { url, label } = context.line;
   const current = host.store.get(url);
   if (current) renderMetadata(card, current, host, context);
-  else createSkeleton(card, context);
+  else createSkeleton(card, context, host);
 
   const unsubscribe = host.store.subscribe(url, (metadata) => {
     if (card.isConnected) renderMetadata(card, metadata, host, context);
