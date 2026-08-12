@@ -37,8 +37,9 @@ Inline links inside sentences are intentionally left unchanged.
 ### Card controls
 
 Hovering a card reveals its actions: edit the link, copy it, refresh the
-metadata, and switch the card between expanded and compact. Editing and
-resizing are Live Preview only — in Reading mode a card is display-only.
+metadata, switch between expanded and compact, and embed the live page.
+Editing and resizing are Live Preview only — in Reading mode a card is
+display-only.
 
 ### Card size
 
@@ -53,6 +54,20 @@ https://obsidian.md %%glance:expand%%
 The card's size toggle writes these for you. `%%…%%` is an Obsidian comment,
 so it never shows in Reading mode. A compact card keeps its image, just
 narrower, and drops the description.
+
+### Web embed
+
+The embed action (window icon) swaps the card for the live page itself, loaded
+in an iframe, rather than an unfurled preview:
+
+```markdown
+https://obsidian.md %%glance:embed%%
+```
+
+Toggling it off returns to **Default card size**. Sites that refuse to render
+inside an iframe (`X-Frame-Options` or a restrictive CSP — most banks, social
+networks, and many SaaS apps) show as a blank frame with no way to detect that
+in advance; use **Open in browser** in the card header as the fallback.
 
 ### Lists and tasks
 

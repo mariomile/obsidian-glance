@@ -57,6 +57,14 @@ test('withLayout adds, replaces and removes the marker', () => {
     transform('https://example.com %%glance:compact%%', (line) => withLayout(line, undefined)),
     'https://example.com',
   );
+  assert.equal(
+    transform('https://example.com', (line) => withLayout(line, 'embed')),
+    'https://example.com %%glance:embed%%',
+  );
+  assert.equal(
+    transform('https://example.com %%glance:embed%%', (line) => withLayout(line, 'compact')),
+    'https://example.com %%glance:compact%%',
+  );
 });
 
 test('withLayout leaves the list prefix untouched', () => {

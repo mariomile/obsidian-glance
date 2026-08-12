@@ -58,6 +58,7 @@ test('parses a Markdown link inside a task item', () => {
 test('reads the layout marker', () => {
   assert.equal(parseGlanceLine('https://example.com %%glance:compact%%')?.layout, 'compact');
   assert.equal(parseGlanceLine('https://example.com %%glance:expand%%')?.layout, 'expanded');
+  assert.equal(parseGlanceLine('https://example.com %%glance:embed%%')?.layout, 'embed');
   assert.equal(parseGlanceLine('https://example.com')?.layout, undefined);
 });
 

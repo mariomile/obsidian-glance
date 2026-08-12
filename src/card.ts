@@ -75,11 +75,14 @@ function createImage(metadata: LinkMetadata): HTMLElement {
   media.className = 'glance-card__media';
   const image = document.createElement('img');
   image.className = 'glance-card__image';
-  image.src = metadata.image ?? '';
   image.alt = '';
   image.loading = 'lazy';
   image.decoding = 'async';
+  // Both listeners are attached before `src`, so a already-cached image cannot
+  // resolve in the gap and leave the element stuck at its starting opacity.
+  image.addEventListener('load', () => image.classList.add('is-loaded'), { once: true });
   image.addEventListener('error', () => media.remove(), { once: true });
+  image.src = metadata.image ?? '';
   media.append(image);
   return media;
 }
@@ -91,12 +94,16 @@ function renderMetadata(
   context: CardContext,
 ): void {
   const compact = context.layout === 'compact';
+  // Only the skeleton-to-content swap is choreographed. A re-render from a
+  // checkbox tick or a manual refresh keeps the card still — replaying the
+  // entrance on every interaction would read as a glitch, not as polish.
+  const settling = container.classList.contains('is-loading');
   container.replaceChildren();
   container.className = `glance-card${metadata.degraded ? ' is-degraded' : ''}${
     compact ? ' is-compact' : ''
   }${context.marker === 'none' ? '' : ' is-listed'}${
     context.marker === 'task' && context.line.checked ? ' is-task-checked' : ''
-  }`;
+  }${settling ? ' is-settling' : ''}`;
   container.setAttribute('aria-label', metadata.title);
 
   const body = document.createElement('div');
@@ -150,6 +157,52 @@ function renderMetadata(
   container.append(createActions(context, host, startEdit(context, body)), link);
 }
 
+/**
+ * The live page itself, not an unfurled preview — so unlike renderMetadata
+ * this never waits on the metadata store. A header stays above the iframe
+ * because many sites refuse to render inside one (`X-Frame-Options`/CSP) with
+ * no reliable way to detect that from here: the "Open in browser" link is the
+ * fallback, not error-detection logic.
+ */
+function renderEmbed(container: HTMLElement, context: CardContext, host: CardHost): void {
+  container.replaceChildren();
+  container.className = `glance-card glance-card--embed${
+    context.marker === 'none' ? '' : ' is-listed'
+  }`;
+  container.setAttribute('aria-label', `Embedded page: ${domainLabel(context.line.url)}`);
+
+  const header = document.createElement('div');
+  header.className = 'glance-card__embed-header';
+  const site = document.createElement('span');
+  site.className = 'glance-card__site';
+  site.textContent = domainLabel(context.line.url);
+  header.append(site);
+  const open = document.createElement('a');
+  open.className = 'glance-card__embed-open';
+  open.href = context.line.url;
+  open.target = '_blank';
+  open.rel = 'noopener noreferrer';
+  open.textContent = 'Open in browser';
+  header.append(open);
+
+  const frame = document.createElement('iframe');
+  frame.className = 'glance-card__embed-frame';
+  frame.loading = 'lazy';
+  frame.referrerPolicy = 'no-referrer';
+  // No allow-top-navigation: an embedded page must not be able to hijack the
+  // whole Obsidian window.
+  frame.sandbox.add('allow-scripts', 'allow-same-origin', 'allow-popups', 'allow-forms');
+  // Attached before `src` for the same reason as the thumbnail's: a frame that
+  // resolves fast must not beat its own listener. Fires cross-origin too, so a
+  // site that refuses to render still settles instead of hanging invisible.
+  frame.addEventListener('load', () => frame.classList.add('is-loaded'), { once: true });
+  frame.src = context.line.url;
+
+  const marker = createMarker(context, toggleHandler(context));
+  if (marker) container.append(marker);
+  container.append(header, frame, createActions(context, host, undefined));
+}
+
 export function mountCard(
   wrapper: HTMLElement,
   context: CardContext,
@@ -160,6 +213,13 @@ export function mountCard(
   // ever touches the wrapper's class list.
   const card = document.createElement('div');
   wrapper.append(card);
+
+  // An embed shows the live page, not an unfurled preview, so it never needs
+  // the metadata store.
+  if (context.layout === 'embed') {
+    renderEmbed(card, context, host);
+    return () => {};
+  }
 
   const { url, label } = context.line;
   const current = host.store.get(url);

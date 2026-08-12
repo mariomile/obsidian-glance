@@ -1,8 +1,14 @@
+/* The card sizes itself against its pane, not the window. An Obsidian split or
+   sidebar can be 300px wide inside a 1600px window, where a viewport media
+   query still reports "desktop" and leaves the card cramped — the pane is the
+   only width that was ever the right measurement here. */
 .glance-editor-card,
 .glance-reading-card {
   display: block;
   margin: 0.35rem 0;
   max-width: 100%;
+  container-type: inline-size;
+  container-name: glance;
 }
 
 /* Cards inside a list item sit flush with the bullet text rhythm. */
@@ -20,7 +26,9 @@ li > .glance-reading-card {
 /* Natural, borderless look: the card is just content on the page. The only
    surface is a soft hover wash; geometry and states, no decorative chrome. */
 .glance-card {
-  --glance-media-w: 150px;
+  /* Fluid rather than stepped: the thumbnail tracks the pane continuously, so
+     dragging a split never snaps the card through a breakpoint. */
+  --glance-media-w: clamp(88px, 26cqi, 150px);
 
   position: relative;
   display: flex;
@@ -67,11 +75,33 @@ li > .glance-reading-card {
   border-radius: 8px;
 }
 
+/* Fades up rather than popping in: an Open Graph image lands whenever the
+   network says so, and a hard swap from the placeholder block is the single
+   most jarring moment in the card's life. Starts invisible over that block,
+   so a never-resolving image degrades to the neutral placeholder instead of
+   a broken frame. */
 .glance-card__image {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
+  opacity: 0;
+  transition:
+    opacity var(--cosmos-t-base, 220ms) var(--mv-wash, cubic-bezier(0.25, 1, 0.5, 1)),
+    transform var(--cosmos-t-slow, 320ms) var(--mv-lift, cubic-bezier(0.22, 1, 0.36, 1));
+}
+
+.glance-card__image.is-loaded {
+  opacity: 1;
+}
+
+/* mv-kit §6: gated, see the .glance-card:hover comment above. The image
+   drifts a hair wider inside its clipped box — the depth cue the card's own
+   1px lift is too small to carry on its own. */
+@media (hover: hover) {
+  .glance-card:hover .glance-card__image.is-loaded {
+    transform: scale(1.04);
+  }
 }
 
 .glance-card__body {
@@ -280,7 +310,7 @@ li > .glance-reading-card {
    degraded compact card takes the compact height on source order, never on an
    !important. */
 .glance-card.is-compact {
-  --glance-media-w: 64px;
+  --glance-media-w: clamp(48px, 14cqi, 72px);
 
   min-height: 52px;
 }
@@ -293,6 +323,58 @@ li > .glance-reading-card {
 .glance-card.is-compact .glance-card__media,
 .glance-card.is-compact .glance-card__skeleton-media {
   min-height: 36px;
+}
+
+/* The live page itself, laid out as a column (header, then the frame) rather
+   than the metadata card's row layout — an iframe has nothing to sit beside. */
+.glance-card--embed {
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  padding: 8px;
+}
+
+.glance-card__embed-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-faint);
+  font-family: var(--font-interface);
+  font-size: 12px;
+  line-height: 1.25;
+}
+
+.glance-card__embed-open {
+  flex: 0 0 auto;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+/* mv-kit §6: gated, see the .glance-card:hover comment above — this link
+   sits inside inline document content, directly tappable on phone. */
+@media (hover: hover) {
+  .glance-card__embed-open:hover {
+    color: var(--text-normal);
+  }
+}
+
+/* Height tracks the card's own width so the frame keeps a page-like
+   proportion in a narrow sidebar instead of towering over it as a fixed 420px
+   slab. Fades in for the same reason the thumbnail does: a cross-origin frame
+   paints white before it paints the site. */
+.glance-card__embed-frame {
+  width: 100%;
+  height: clamp(220px, 56cqi, 460px);
+  background: var(--background-primary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 8px;
+  opacity: 0;
+  transition: opacity var(--cosmos-t-slow, 320ms) var(--mv-wash, cubic-bezier(0.25, 1, 0.5, 1));
+}
+
+.glance-card__embed-frame.is-loaded {
+  opacity: 1;
 }
 
 .glance-card__skeleton-media,
@@ -315,6 +397,33 @@ li > .glance-reading-card {
   border-radius: 5px;
 }
 
+/* The skeleton-to-content swap, choreographed instead of cut. Applied only on
+   that one transition (card.ts sets .is-settling when it replaces a loading
+   card), never on a re-render from a checkbox tick or a refresh — a card that
+   re-animates every time you touch its line reads as a glitch, not as polish.
+   The media trails the text by half a beat: the eye lands on the title first,
+   which is the reading order the card is laid out in anyway. */
+.glance-card.is-settling .glance-card__body,
+.glance-card.is-settling .glance-card__media {
+  animation: glance-settle var(--cosmos-t-base, 220ms) var(--mv-wash, cubic-bezier(0.25, 1, 0.5, 1)) both;
+}
+
+.glance-card.is-settling .glance-card__media {
+  animation-delay: calc(var(--cosmos-t-fast, 140ms) / 2);
+}
+
+@keyframes glance-settle {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 @keyframes glance-spin {
   to { transform: rotate(360deg); }
 }
@@ -323,7 +432,11 @@ li > .glance-reading-card {
   to { background-position: -220% 0; }
 }
 
-@media (max-width: 600px) {
+/* Everything dimensional keys off the pane. A phone reaches these the same way
+   a 380px desktop sidebar does — one rule set, no duplicated breakpoint
+   ladder, and a card in a narrow split finally gets the treatment that until
+   now only a narrow *window* could trigger. */
+@container glance (max-width: 420px) {
   .glance-card {
     gap: 10px;
     min-height: 72px;
@@ -332,8 +445,6 @@ li > .glance-reading-card {
 
   .glance-card__media,
   .glance-card__skeleton-media {
-    flex-basis: 88px;
-    width: 88px;
     min-height: 56px;
   }
 
@@ -341,18 +452,47 @@ li > .glance-reading-card {
     gap: 4px;
   }
 
+  /* A third line, because the title is the payload. Narrow panes are short on
+     width and long on height — at 380px the two-line clamp cut the title
+     mid-word while the card still had vertical room to spare, so the clamp
+     was spending the wrong axis. Compact keeps its one-line clamp: that rule
+     outranks this one on specificity, which is exactly what should happen. */
   .glance-card__title {
-    font-size: 14px;
+    font-size: 15px;
+    -webkit-line-clamp: 3;
   }
 
   .glance-card__description {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .glance-card__footer {
     font-size: 11px;
   }
+}
 
+/* Below this the image and the text stop cooperating. Measured in a 300px
+   pane — the width of a typical Obsidian sidebar — the thumbnail is pinned at
+   its 88px floor and the title, description and footer are all three
+   ellipsed: 30% of the card spent on decoration while every piece of actual
+   information is cut. Dropping the image gives the text ~280px instead of
+   ~180px and the card becomes readable again. A preview with nothing legible
+   in it is not a preview. */
+@container glance (max-width: 320px) {
+  .glance-card {
+    min-height: 0;
+  }
+
+  .glance-card__media,
+  .glance-card__skeleton-media {
+    display: none;
+  }
+}
+
+/* Touch, not width. These two are properties of the input device, not of the
+   available space, so they stay on a viewport query while everything
+   dimensional above moved to @container. */
+@media (max-width: 600px) {
   .glance-card__actions {
     opacity: 1;
   }
@@ -375,13 +515,31 @@ li > .glance-reading-card {
   }
 }
 
+/* The two `.is-settling` selectors are repeated here rather than shortened to
+   the bare element: `.glance-card.is-settling .glance-card__body` outranks
+   `.glance-card__body` on specificity, and specificity beats source order, so
+   a shorter selector here would silently lose and the animation would still
+   run. Matching the original selector exactly and landing later in the file
+   is what makes this win — mv-kit forbids reaching for !important. */
 @media (prefers-reduced-motion: reduce) {
   .glance-card,
   .glance-card__actions,
   .glance-card__action,
+  .glance-card__image,
+  .glance-card__embed-frame,
   .glance-card__skeleton-media,
-  .glance-card__skeleton-line {
+  .glance-card__skeleton-line,
+  .glance-card.is-settling .glance-card__body,
+  .glance-card.is-settling .glance-card__media {
     animation: none;
     transition: none;
+  }
+
+  /* Nested inside the hover gate on purpose: an instant jump is still motion
+     to someone who asked for less of it. */
+  @media (hover: hover) {
+    .glance-card:hover .glance-card__image.is-loaded {
+      transform: none;
+    }
   }
 }

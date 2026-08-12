@@ -17,7 +17,7 @@ const LINE = new RegExp(
     ')?' +
   ')' +
   '(.*?)' +
-  '((?:[ \\t]+%%glance:(compact|expand)%%)?[ \\t]*)$',
+  '((?:[ \\t]+%%glance:(compact|expand|embed)%%)?[ \\t]*)$',
   'i',
 );
 
@@ -64,7 +64,11 @@ export function parseGlanceLine(text: string): GlanceLine | null {
 
   const list = listKindOf(listMarker, taskBox);
   const layout: CardLayout | undefined = layoutWord
-    ? (layoutWord.toLowerCase() === 'compact' ? 'compact' : 'expanded')
+    ? (layoutWord.toLowerCase() === 'compact'
+      ? 'compact'
+      : layoutWord.toLowerCase() === 'embed'
+        ? 'embed'
+        : 'expanded')
     : undefined;
 
   return {

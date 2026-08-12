@@ -1,6 +1,6 @@
 {
   "name": "glance",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Render standalone web links as source-pure rich cards in Obsidian.",
   "main": "main.js",
   "type": "module",

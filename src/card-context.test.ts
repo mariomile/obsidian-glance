@@ -28,6 +28,12 @@ test('a marker overrides the global default in both directions', () => {
   assert.equal(resolveLayout(expandMarked, settingsWith('compact')), 'expanded');
 });
 
+test('the embed marker overrides the global default', () => {
+  const embedMarked = lineOf('https://example.com %%glance:embed%%');
+  assert.equal(resolveLayout(embedMarked, settingsWith('expanded')), 'embed');
+  assert.equal(resolveLayout(embedMarked, settingsWith('compact')), 'embed');
+});
+
 test('the override applies inside lists and tasks too', () => {
   assert.equal(
     resolveLayout(lineOf('- [ ] https://example.com %%glance:expand%%'), settingsWith('compact')),

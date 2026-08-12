@@ -3,7 +3,7 @@ export interface LinkSource {
   label?: string;
 }
 
-export type CardLayout = 'expanded' | 'compact';
+export type CardLayout = 'expanded' | 'compact' | 'embed';
 
 export type ListKind = 'none' | 'bullet' | 'ordered' | 'task';
 

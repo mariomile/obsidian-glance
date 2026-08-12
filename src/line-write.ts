@@ -27,10 +27,16 @@ export function withChecked(line: GlanceLine, checked: boolean): GlanceLine {
   };
 }
 
+const LAYOUT_MARKER: Record<CardLayout, string> = {
+  compact: 'compact',
+  expanded: 'expand',
+  embed: 'embed',
+};
+
 export function withLayout(line: GlanceLine, layout: CardLayout | undefined): GlanceLine {
   const next: GlanceLine = {
     ...line,
-    suffix: layout ? ` %%glance:${layout === 'compact' ? 'compact' : 'expand'}%%` : '',
+    suffix: layout ? ` %%glance:${LAYOUT_MARKER[layout]}%%` : '',
   };
   if (layout) next.layout = layout;
   else delete next.layout;

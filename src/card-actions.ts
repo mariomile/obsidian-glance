@@ -39,13 +39,25 @@ export function createActions(
 
   const writer = context.write;
   if (context.editable && writer) {
-    const compact = context.layout === 'compact';
+    const embedded = context.layout === 'embed';
     pill.append(action(
-      'size',
-      compact ? 'chevrons-up-down' : 'chevrons-down-up',
-      compact ? 'Expand card' : 'Collapse card',
-      () => writer.setLayout(compact ? 'expanded' : 'compact'),
+      'embed',
+      'app-window',
+      embedded ? 'Show card' : 'Embed web page',
+      () => writer.setLayout(embedded ? host.settings().defaultCardLayout : 'embed'),
     ));
+
+    // Compact vs. expanded is meaningless for an embed, so the size toggle
+    // only applies to the two card layouts.
+    if (!embedded) {
+      const compact = context.layout === 'compact';
+      pill.append(action(
+        'size',
+        compact ? 'chevrons-up-down' : 'chevrons-down-up',
+        compact ? 'Expand card' : 'Collapse card',
+        () => writer.setLayout(compact ? 'expanded' : 'compact'),
+      ));
+    }
   }
 
   return pill;
