@@ -72,7 +72,7 @@ li > .glance-reading-card {
   min-height: 64px;
   overflow: hidden;
   background: var(--background-modifier-hover);
-  border-radius: 8px;
+  border-radius: var(--radius-s, 8px);
 }
 
 /* Fades up rather than popping in: an Open Graph image lands whenever the
@@ -368,7 +368,7 @@ li > .glance-reading-card {
   height: clamp(220px, 56cqi, 460px);
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
-  border-radius: 8px;
+  border-radius: var(--radius-s, 8px);
   opacity: 0;
   transition: opacity var(--cosmos-t-slow, 320ms) var(--mv-wash, cubic-bezier(0.25, 1, 0.5, 1));
 }
