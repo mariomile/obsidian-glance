@@ -16,7 +16,7 @@ export function createActions(
   host: CardHost,
   onEdit?: () => void,
 ): HTMLElement {
-  const pill = document.createElement('div');
+  const pill = createDiv();
   pill.className = 'glance-card__actions';
 
   if (context.editable && onEdit) {
@@ -72,7 +72,7 @@ export function createActions(
  * reopening the note. One retry button on the loading state closes that gap.
  */
 export function createLoadingActions(context: CardContext, host: CardHost): HTMLElement {
-  const pill = document.createElement('div');
+  const pill = createDiv();
   pill.className = 'glance-card__actions';
   pill.append(refreshAction(context, host));
   return pill;
@@ -100,7 +100,7 @@ export function createInlineEditor(
   onCommit: (url: string) => void,
   onCancel: () => void,
 ): HTMLInputElement {
-  const input = document.createElement('input');
+  const input = createEl('input');
   input.type = 'text';
   input.className = 'glance-card__edit';
   input.value = url;
@@ -138,7 +138,7 @@ function action(
   label: string,
   onClick: (button: HTMLButtonElement) => void,
 ): HTMLButtonElement {
-  const button = document.createElement('button');
+  const button = createEl('button');
   button.type = 'button';
   button.className = `glance-card__action glance-card__action--${name} clickable-icon`;
   button.setAttribute('aria-label', label);

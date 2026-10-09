@@ -105,6 +105,23 @@ Glance sends a request only to the URL pasted by the user. It does not use a
 third-party metadata proxy or analytics service. Sites that block direct
 requests fall back to a domain-only card.
 
+## Network use
+
+Glance makes network requests only for standalone web links in your notes:
+
+- **Page metadata**: when a card is first rendered (or its cache entry has
+  expired, or you run **Refresh card under cursor**), Glance sends one `GET`
+  request to the linked URL with Obsidian's `requestUrl` to read its title,
+  description and Open Graph tags. Results are cached in plugin data for the
+  **Cache lifetime** set in settings.
+- **Images**: the card loads the page's preview image and favicon directly
+  from the URLs the page declares (or `/favicon.ico` on the same site).
+- **Web embed**: only when you switch a card to embed mode does the live page
+  load in an iframe.
+
+No other servers are contacted, nothing is sent besides the request for the
+linked page itself, and there is no telemetry.
+
 ## Try it
 
 See it running in the [Obsidianverse sample vault](https://github.com/mariomile/obsidianverse-sample-vault), a small, fictional vault with the whole plugin suite pre-configured.
