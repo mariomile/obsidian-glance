@@ -111,7 +111,7 @@ export class MetadataStore {
   private prune(): void {
     const maximum = Math.max(20, this.options.maxEntries());
     while (this.cache.size > maximum) {
-      const oldest = this.cache.keys().next().value as string | undefined;
+      const oldest = this.cache.keys().next().value;
       if (!oldest) return;
       this.cache.delete(oldest);
     }
