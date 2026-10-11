@@ -6,9 +6,9 @@ the note source as ordinary Markdown.
 Part of the marioverse Obsidian plugin suite.
 
 <p align="center">
-  <img src="docs/card.png" width="700" alt="Glance — a rendered link card" />
+  <img src="docs/card.png" width="900" alt="Glance: standalone links rendered as cards" />
 </p>
-<p align="center"><em>A standalone link, rendered as a card with favicon, domain, and preview image.</em></p>
+<p align="center"><em>Standalone links, rendered as cards with favicon, domain, and preview image.</em></p>
 
 ## What makes it different
 
