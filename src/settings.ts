@@ -11,7 +11,6 @@ export class GlanceSettingTab extends PluginSettingTab {
   display(): void {
     const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl('h2', { text: 'Glance' });
     containerEl.createEl('p', {
       cls: 'setting-item-description',
       text: 'Standalone links stay ordinary Markdown and render as rich cards when their line is inactive.',

@@ -47,7 +47,7 @@ class LinkCardWidget extends WidgetType {
   }
 
   toDOM(view: EditorView): HTMLElement {
-    const wrapper = document.createElement('div');
+    const wrapper = createDiv();
     wrapper.className = 'glance-editor-card';
     // Live Preview replaces the whole line, indent included, so the nesting
     // has to be re-applied to the wrapper.

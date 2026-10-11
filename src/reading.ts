@@ -14,8 +14,8 @@ import type { GlanceLine } from './model.ts';
  *  counting either as a sibling is what kept bullet items from ever becoming
  *  cards in Reading mode. */
 function isListChrome(node: Node): boolean {
-  if (node instanceof HTMLInputElement) return true;
-  return node instanceof HTMLElement && node.hasClass('list-bullet');
+  if (node.instanceOf(HTMLInputElement)) return true;
+  return node.instanceOf(HTMLElement) && node.hasClass('list-bullet');
 }
 
 function onlyExternalAnchor(container: HTMLElement): HTMLAnchorElement | null {
@@ -77,7 +77,7 @@ function mountFor(
   host: CardHost,
   sourceLine: GlanceLine | undefined,
 ): { card: HTMLElement; mount: ReadingCardMount } {
-  const card = document.createElement('div');
+  const card = createDiv();
   card.className = 'glance-reading-card';
   const text = anchor.textContent?.trim();
   const label = text && text !== anchor.href ? text : undefined;

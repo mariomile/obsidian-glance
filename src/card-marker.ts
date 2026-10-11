@@ -18,7 +18,7 @@ export function createMarker(
 ): HTMLElement | null {
   if (context.marker === 'none') return null;
 
-  const slot = document.createElement('div');
+  const slot = createDiv();
 
   if (context.marker === 'ordered') {
     slot.className = 'glance-card__marker glance-card__marker--ordered';
@@ -32,7 +32,7 @@ export function createMarker(
   }
 
   slot.className = 'glance-card__marker glance-card__marker--task';
-  const checkbox = document.createElement('input');
+  const checkbox = createEl('input');
   checkbox.type = 'checkbox';
   // Obsidian's own class, so themes — Cosmos included — skin this checkbox
   // exactly like a native task checkbox, with no styling of our own.

@@ -18,12 +18,12 @@ function createSkeleton(container: HTMLElement, context: CardContext, host: Card
   }`;
   container.setAttribute('aria-label', `Loading preview for ${domainLabel(context.line.url)}`);
 
-  const media = document.createElement('div');
+  const media = createDiv();
   media.className = 'glance-card__skeleton-media';
-  const body = document.createElement('div');
+  const body = createDiv();
   body.className = 'glance-card__body';
   for (const width of compact ? ['72%', '46%'] : ['72%', '92%', '46%']) {
-    const line = document.createElement('div');
+    const line = createDiv();
     line.className = 'glance-card__skeleton-line';
     line.style.width = width;
     body.append(line);
@@ -71,9 +71,9 @@ function toggleHandler(context: CardContext): ((checked: boolean) => void) | und
 }
 
 function createImage(metadata: LinkMetadata): HTMLElement {
-  const media = document.createElement('div');
+  const media = createDiv();
   media.className = 'glance-card__media';
-  const image = document.createElement('img');
+  const image = createEl('img');
   image.className = 'glance-card__image';
   image.alt = '';
   image.loading = 'lazy';
@@ -106,10 +106,10 @@ function renderMetadata(
   }${settling ? ' is-settling' : ''}`;
   container.setAttribute('aria-label', metadata.title);
 
-  const body = document.createElement('div');
+  const body = createDiv();
   body.className = 'glance-card__body';
 
-  const title = document.createElement('div');
+  const title = createDiv();
   title.className = 'glance-card__title';
   title.textContent = metadata.title;
   body.append(title);
@@ -117,16 +117,16 @@ function renderMetadata(
   // Compact is one line tall by definition, so the description is dropped
   // rather than clamped — the footer carries the provenance instead.
   if (!compact && host.settings().showDescription && metadata.description) {
-    const description = document.createElement('div');
+    const description = createDiv();
     description.className = 'glance-card__description';
     description.textContent = metadata.description;
     body.append(description);
   }
 
-  const footer = document.createElement('div');
+  const footer = createDiv();
   footer.className = 'glance-card__footer';
   if (metadata.favicon) {
-    const favicon = document.createElement('img');
+    const favicon = createEl('img');
     favicon.className = 'glance-card__favicon';
     favicon.src = metadata.favicon;
     favicon.alt = '';
@@ -134,13 +134,13 @@ function renderMetadata(
     favicon.addEventListener('error', () => favicon.remove(), { once: true });
     footer.append(favicon);
   }
-  const site = document.createElement('span');
+  const site = createSpan();
   site.className = 'glance-card__site';
   site.textContent = metadata.author ? `${metadata.siteName} · ${metadata.author}` : metadata.siteName;
   footer.append(site);
   body.append(footer);
 
-  const link = document.createElement('a');
+  const link = createEl('a');
   link.className = 'glance-card__link';
   link.href = context.line.url;
   link.target = '_blank';
@@ -171,13 +171,13 @@ function renderEmbed(container: HTMLElement, context: CardContext, host: CardHos
   }`;
   container.setAttribute('aria-label', `Embedded page: ${domainLabel(context.line.url)}`);
 
-  const header = document.createElement('div');
+  const header = createDiv();
   header.className = 'glance-card__embed-header';
-  const site = document.createElement('span');
+  const site = createSpan();
   site.className = 'glance-card__site';
   site.textContent = domainLabel(context.line.url);
   header.append(site);
-  const open = document.createElement('a');
+  const open = createEl('a');
   open.className = 'glance-card__embed-open';
   open.href = context.line.url;
   open.target = '_blank';
@@ -185,7 +185,7 @@ function renderEmbed(container: HTMLElement, context: CardContext, host: CardHos
   open.textContent = 'Open in browser';
   header.append(open);
 
-  const frame = document.createElement('iframe');
+  const frame = createEl('iframe');
   frame.className = 'glance-card__embed-frame';
   frame.loading = 'lazy';
   frame.referrerPolicy = 'no-referrer';
@@ -211,7 +211,7 @@ export function mountCard(
   // The card is a child element this module owns outright. The wrapper belongs
   // to the caller and carries its own layout class, which is why nothing here
   // ever touches the wrapper's class list.
-  const card = document.createElement('div');
+  const card = createDiv();
   wrapper.append(card);
 
   // An embed shows the live page, not an unfurled preview, so it never needs
