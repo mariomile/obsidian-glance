@@ -1,4 +1,5 @@
 import {
+  Prec,
   RangeSetBuilder,
   StateEffect,
   StateField,
@@ -235,7 +236,10 @@ function updateDecorations(
 export function glanceEditorExtension(host: CardHost): Extension {
   // editingLineField first: the decoration field reads it during its own
   // `create`, so it has to be initialised by then.
-  return [editingLineField, decorationField(host)];
+  // Highest precedence: Obsidian draws its own replace widget over an
+  // `![](x.com/…)` line, and of two replacements on the same range the
+  // earlier decoration source wins. Glance's card has to come first.
+  return [editingLineField, Prec.highest(decorationField(host))];
 }
 
 function decorationField(host: CardHost): Extension {

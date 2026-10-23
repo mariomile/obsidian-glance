@@ -29,6 +29,27 @@ export interface GlanceLine extends LinkSource {
   layout?: CardLayout;
 }
 
+export interface XPostMedia {
+  type: 'photo' | 'video' | 'gif';
+  /** A still image: the photo itself, or the video's poster frame. */
+  thumbnail: string;
+}
+
+/** An X post read from its own data rather than from the page's Open Graph
+ *  tags, which carry neither the full text nor the media. */
+export interface XPost {
+  authorName: string;
+  handle: string;
+  avatar?: string;
+  text: string;
+  /** Epoch milliseconds. */
+  createdAt: number;
+  media: XPostMedia[];
+  likes?: number;
+  replies?: number;
+  reposts?: number;
+}
+
 export interface LinkMetadata {
   url: string;
   title: string;
@@ -37,6 +58,8 @@ export interface LinkMetadata {
   favicon?: string;
   siteName: string;
   author?: string;
+  /** Present only for X posts resolved through their post data. */
+  post?: XPost;
   fetchedAt: number;
   degraded: boolean;
 }

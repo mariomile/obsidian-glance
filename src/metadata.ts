@@ -2,6 +2,7 @@ import { requestUrl } from 'obsidian';
 
 import { domainLabel, resolveWebUrl } from './link-source.ts';
 import type { LinkMetadata } from './model.ts';
+import { xApiUrl, xPostMetadata, xStatusOf } from './x-post.ts';
 
 function metaContent(document: Document, ...selectors: string[]): string | undefined {
   for (const selector of selectors) {
@@ -50,7 +51,29 @@ function withTimeout<T>(promise: Promise<T>, fallback: T): Promise<T> {
   });
 }
 
+/** Null on any failure, so the caller falls through to the page's own tags
+ *  rather than to a bare fallback. */
+async function fetchXPost(url: string): Promise<LinkMetadata | null> {
+  const status = xStatusOf(url);
+  if (!status) return null;
+  try {
+    const response = await withTimeout(requestUrl({
+      url: xApiUrl(status),
+      method: 'GET',
+      headers: { Accept: 'application/json' },
+      throw: false,
+    }), null);
+    if (response === null || response.status !== 200) return null;
+    return xPostMetadata(response.json, url);
+  } catch {
+    return null;
+  }
+}
+
 export async function fetchLinkMetadata(url: string, label?: string): Promise<LinkMetadata> {
+  const post = await fetchXPost(url);
+  if (post) return post;
+
   const fallback = fallbackMetadata(url, label);
   try {
     const response = await withTimeout(requestUrl({

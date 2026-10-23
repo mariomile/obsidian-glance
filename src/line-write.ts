@@ -3,6 +3,7 @@ import type { EditorView } from '@codemirror/view';
 import type { CardWriter } from './card-context.ts';
 import { isSafeWebUrl, parseGlanceLine, serializeGlanceLine } from './link-source.ts';
 import type { CardLayout, GlanceLine } from './model.ts';
+import { xStatusOf } from './x-post.ts';
 
 /**
  * The only module in this plugin that mutates the document.
@@ -46,6 +47,11 @@ export function withLayout(line: GlanceLine, layout: CardLayout | undefined): Gl
 export function withLink(line: GlanceLine, url: string): GlanceLine {
   const trimmed = url.trim();
   if (!isSafeWebUrl(trimmed)) return line;
+  // An X embed stays an embed only while it still points at a post: the same
+  // syntax around any other URL is an image, which Glance does not render.
+  if (line.linkText.startsWith('!') && xStatusOf(trimmed)) {
+    return { ...line, url: trimmed, linkText: `![${line.label ?? ''}](${trimmed})` };
+  }
   return {
     ...line,
     url: trimmed,

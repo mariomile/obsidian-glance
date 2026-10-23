@@ -8,6 +8,7 @@ import { mountCard, type CardHost } from './card.ts';
 import { resolveLayout, type CardContext } from './card-context.ts';
 import { parseGlanceLine } from './link-source.ts';
 import type { GlanceLine } from './model.ts';
+import { xStatusOf } from './x-post.ts';
 
 /** Obsidian's own list chrome, which sits beside the anchor inside an <li>:
  *  the bullet glyph span and the task checkbox. Neither is content, and
@@ -29,6 +30,55 @@ function onlyExternalAnchor(container: HTMLElement): HTMLAnchorElement | null {
     return (node.textContent ?? '').trim().length > 0;
   });
   return hasOtherContent ? null : anchor;
+}
+
+/** The status id of an X embed as Obsidian renders it: an <img> pointing at
+ *  the post, or the platform.twitter.com iframe it later swaps that for. */
+function xEmbedId(node: Element): string | null {
+  if (node.instanceOf(HTMLImageElement)) {
+    return xStatusOf(node.getAttribute('src') ?? '')?.id ?? null;
+  }
+  if (node.instanceOf(HTMLIFrameElement)) {
+    const src = node.getAttribute('src') ?? '';
+    if (!src.startsWith('https://platform.twitter.com/embed/')) return null;
+    return /[?&]id=(\d+)/.exec(src)?.[1] ?? null;
+  }
+  return null;
+}
+
+function isBlank(node: Node | null): boolean {
+  return node !== null && node.nodeType === Node.TEXT_NODE && !(node.textContent ?? '').trim();
+}
+
+/** The nearest sibling that is not whitespace, in one direction. */
+function neighbour(node: Node, forward: boolean): Node | null {
+  let next = forward ? node.nextSibling : node.previousSibling;
+  while (isBlank(next)) next = next && (forward ? next.nextSibling : next.previousSibling);
+  return next;
+}
+
+function isLineEdge(node: Node | null): boolean {
+  return node === null || (node.instanceOf(HTMLElement) && node.tagName === 'BR') || isListChrome(node);
+}
+
+/** X embeds that stand alone on their own source line, the embed counterpart
+ *  of onlyExternalAnchor. A paragraph joins consecutive lines with <br>, so
+ *  an embed on its own line is one bounded by <br> or the block's edges. */
+function lineXEmbeds(container: HTMLElement): { node: Element; id: string }[] {
+  const found: { node: Element; id: string }[] = [];
+  for (const node of Array.from(container.querySelectorAll(':scope > img, :scope > iframe'))) {
+    const id = xEmbedId(node);
+    if (!id) continue;
+    if (isLineEdge(neighbour(node, false)) && isLineEdge(neighbour(node, true))) found.push({ node, id });
+  }
+  return found;
+}
+
+/** Removes the <br> that ended the line a card replaced: the card is a block,
+ *  so the break would leave an empty line under it. */
+function dropLineBreak(node: Element): void {
+  const next = neighbour(node, true);
+  if (next?.instanceOf(HTMLElement) && next.tagName === 'BR') next.remove();
 }
 
 /**
@@ -72,20 +122,24 @@ class ReadingCardMount extends MarkdownRenderChild {
   }
 }
 
+function anchorLabel(anchor: HTMLAnchorElement): string | undefined {
+  const text = anchor.textContent?.trim();
+  return text && text !== anchor.href ? text : undefined;
+}
+
 function mountFor(
-  anchor: HTMLAnchorElement,
+  url: string,
+  label: string | undefined,
   host: CardHost,
   sourceLine: GlanceLine | undefined,
 ): { card: HTMLElement; mount: ReadingCardMount } {
   const card = createDiv();
   card.className = 'glance-reading-card';
-  const text = anchor.textContent?.trim();
-  const label = text && text !== anchor.href ? text : undefined;
   const line: GlanceLine = sourceLine ?? {
-    url: anchor.href,
+    url,
     ...(label ? { label } : {}),
     prefix: '',
-    linkText: anchor.href,
+    linkText: url,
     suffix: '',
     indentLevel: 0,
     list: 'none',
@@ -111,6 +165,25 @@ export function glanceReadingProcessor(host: CardHost): MarkdownPostProcessor {
       const index = candidates.findIndex((line) => line.url === url);
       return index === -1 ? undefined : candidates.splice(index, 1)[0];
     };
+    // An embed may already be the platform iframe, whose src no longer holds
+    // the URL as written, so embeds are matched on the post id instead.
+    const takeXLine = (id: string): GlanceLine | undefined => {
+      const index = candidates.findIndex((line) => xStatusOf(line.url)?.id === id);
+      return index === -1 ? undefined : candidates.splice(index, 1)[0];
+    };
+    const mountEmbeds = (container: HTMLElement): number => {
+      const embeds = lineXEmbeds(container);
+      for (const embed of embeds) {
+        const sourceLine = takeXLine(embed.id);
+        const url = sourceLine?.url ?? `https://x.com/i/web/status/${embed.id}`;
+        const alt = embed.node.getAttribute('alt')?.trim();
+        const { card, mount } = mountFor(url, alt || undefined, host, sourceLine);
+        dropLineBreak(embed.node);
+        embed.node.replaceWith(card);
+        context.addChild(mount);
+      }
+      return embeds.length;
+    };
 
     // Loose list items (`- link` separated by blank lines) render as
     // <li><p><a/></p></li>, so the paragraph pass covers them too.
@@ -120,10 +193,18 @@ export function glanceReadingProcessor(host: CardHost): MarkdownPostProcessor {
     ];
     for (const paragraph of paragraphs) {
       if (paragraph.closest('.glance-card')) continue;
+      if (mountEmbeds(paragraph) > 0) {
+        // A paragraph left holding only cards is unwrapped, so the cards keep
+        // the block spacing a standalone link card gets.
+        const onlyCards = Array.from(paragraph.childNodes)
+          .every((node) => isBlank(node) || (node.instanceOf(HTMLElement) && node.hasClass('glance-reading-card')));
+        if (onlyCards) paragraph.replaceWith(...Array.from(paragraph.children));
+        continue;
+      }
       const anchor = onlyExternalAnchor(paragraph);
       if (!anchor) continue;
 
-      const { card, mount } = mountFor(anchor, host, takeLine(anchor.href));
+      const { card, mount } = mountFor(anchor.href, anchorLabel(anchor), host, takeLine(anchor.href));
       paragraph.replaceWith(card);
       context.addChild(mount);
     }
@@ -135,10 +216,11 @@ export function glanceReadingProcessor(host: CardHost): MarkdownPostProcessor {
     for (const item of Array.from(element.querySelectorAll<HTMLLIElement>('li'))) {
       if (item.closest('.glance-card')) continue;
       if (item.querySelector('ul, ol, .glance-reading-card')) continue;
+      if (mountEmbeds(item) > 0) continue;
       const anchor = onlyExternalAnchor(item);
       if (!anchor) continue;
 
-      const { card, mount } = mountFor(anchor, host, takeLine(anchor.href));
+      const { card, mount } = mountFor(anchor.href, anchorLabel(anchor), host, takeLine(anchor.href));
       anchor.replaceWith(card);
       context.addChild(mount);
     }

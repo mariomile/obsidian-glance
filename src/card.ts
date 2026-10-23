@@ -1,38 +1,17 @@
-import { createActions, createInlineEditor, createLoadingActions } from './card-actions.ts';
+import { setIcon } from 'obsidian';
+
+import { createActions, createInlineEditor } from './card-actions.ts';
 import type { CardContext } from './card-context.ts';
 import { createMarker } from './card-marker.ts';
 import { domainLabel } from './link-source.ts';
-import type { GlanceSettings, LinkMetadata } from './model.ts';
+import { fallbackMetadata } from './metadata.ts';
+import type { GlanceSettings, LinkMetadata, XPost } from './model.ts';
 import type { MetadataStore } from './store.ts';
+import { xStatusOf } from './x-post.ts';
 
 export interface CardHost {
   store: MetadataStore;
   settings: () => GlanceSettings;
-}
-
-function createSkeleton(container: HTMLElement, context: CardContext, host: CardHost): void {
-  const compact = context.layout === 'compact';
-  container.replaceChildren();
-  container.className = `glance-card is-loading${compact ? ' is-compact' : ''}${
-    context.marker === 'none' ? '' : ' is-listed'
-  }`;
-  container.setAttribute('aria-label', `Loading preview for ${domainLabel(context.line.url)}`);
-
-  const media = createDiv();
-  media.className = 'glance-card__skeleton-media';
-  const body = createDiv();
-  body.className = 'glance-card__body';
-  for (const width of compact ? ['72%', '46%'] : ['72%', '92%', '46%']) {
-    const line = createDiv();
-    line.className = 'glance-card__skeleton-line';
-    line.style.width = width;
-    body.append(line);
-  }
-  // The slot is reserved while loading too, so the card does not shift
-  // sideways when metadata lands.
-  const marker = createMarker(context, toggleHandler(context));
-  if (marker) container.append(marker);
-  container.append(body, media, createLoadingActions(context, host));
 }
 
 /** Opens the inline editor at the top of the card body. Undefined without a
@@ -87,6 +66,136 @@ function createImage(metadata: LinkMetadata): HTMLElement {
   return media;
 }
 
+function formatCount(value: number): string {
+  return new Intl.NumberFormat(undefined, { notation: 'compact' }).format(value);
+}
+
+function postStats(post: XPost): string[] {
+  const stats: string[] = [];
+  if (post.replies) stats.push(`${formatCount(post.replies)} replies`);
+  if (post.reposts) stats.push(`${formatCount(post.reposts)} reposts`);
+  if (post.likes) stats.push(`${formatCount(post.likes)} likes`);
+  return stats;
+}
+
+/** Up to four stills in the post's own order. A video shows its poster with a
+ *  play glyph: the card opens the post, it does not play it. */
+function createPostMedia(post: XPost): HTMLElement | null {
+  const items = post.media.slice(0, 4);
+  if (items.length === 0) return null;
+  const grid = createDiv();
+  grid.className = `glance-post__media is-count-${items.length}`;
+  for (const item of items) {
+    const cell = createDiv();
+    cell.className = 'glance-post__still';
+    const image = createEl('img');
+    image.className = 'glance-card__image';
+    image.alt = '';
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    image.addEventListener('load', () => image.classList.add('is-loaded'), { once: true });
+    image.addEventListener('error', () => cell.remove(), { once: true });
+    image.src = item.thumbnail;
+    cell.append(image);
+    if (item.type !== 'photo') {
+      const play = createDiv();
+      play.className = 'glance-post__play';
+      setIcon(play, 'play');
+      cell.append(play);
+    }
+    grid.append(cell);
+  }
+  return grid;
+}
+
+/**
+ * An X post drawn from its own data: author, full text and media, instead of
+ * the iframe Obsidian loads for `![](x.com/…)`. Column layout, because the
+ * text is the payload and the media sits under it the way it does on X.
+ */
+function renderPost(
+  container: HTMLElement,
+  metadata: LinkMetadata,
+  post: XPost,
+  host: CardHost,
+  context: CardContext,
+): void {
+  container.replaceChildren();
+  container.className = `glance-card glance-card--post${
+    context.marker === 'none' ? '' : ' is-listed'
+  }${context.marker === 'task' && context.line.checked ? ' is-task-checked' : ''}`;
+  container.setAttribute('aria-label', `${metadata.title}: ${post.text.slice(0, 80)}`);
+
+  const body = createDiv();
+  body.className = 'glance-card__body';
+
+  const header = createDiv();
+  header.className = 'glance-post__header';
+  if (post.avatar) {
+    const avatar = createEl('img');
+    avatar.className = 'glance-post__avatar';
+    avatar.alt = '';
+    avatar.loading = 'lazy';
+    avatar.addEventListener('error', () => avatar.remove(), { once: true });
+    avatar.src = post.avatar;
+    header.append(avatar);
+  }
+  const who = createDiv();
+  who.className = 'glance-post__who';
+  const name = createSpan();
+  name.className = 'glance-card__title glance-post__name';
+  name.textContent = post.authorName;
+  const meta = createSpan();
+  meta.className = 'glance-post__meta';
+  const date = new Date(post.createdAt).toLocaleDateString(undefined, {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  });
+  meta.textContent = `@${post.handle} · ${date}`;
+  who.append(name, meta);
+  header.append(who);
+  body.append(header);
+
+  if (post.text.trim()) {
+    const text = createDiv();
+    text.className = 'glance-post__text';
+    text.textContent = post.text;
+    body.append(text);
+  }
+
+  const media = host.settings().showThumbnail ? createPostMedia(post) : null;
+  if (media) body.append(media);
+
+  const footer = createDiv();
+  footer.className = 'glance-card__footer';
+  if (metadata.favicon) {
+    const favicon = createEl('img');
+    favicon.className = 'glance-card__favicon';
+    favicon.src = metadata.favicon;
+    favicon.alt = '';
+    favicon.loading = 'lazy';
+    favicon.addEventListener('error', () => favicon.remove(), { once: true });
+    footer.append(favicon);
+  }
+  const site = createSpan();
+  site.className = 'glance-card__site';
+  site.textContent = [metadata.siteName, ...postStats(post)].join(' · ');
+  footer.append(site);
+  body.append(footer);
+
+  const link = createEl('a');
+  link.className = 'glance-card__link';
+  link.href = context.line.url;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  link.setAttribute('aria-label', `Open post by ${metadata.title}`);
+
+  const marker = createMarker(context, toggleHandler(context));
+  if (marker) container.append(marker);
+  container.append(body, createActions(context, host, startEdit(context, body)), link);
+}
+
 function renderMetadata(
   container: HTMLElement,
   metadata: LinkMetadata,
@@ -94,16 +203,18 @@ function renderMetadata(
   context: CardContext,
 ): void {
   const compact = context.layout === 'compact';
-  // Only the skeleton-to-content swap is choreographed. A re-render from a
-  // checkbox tick or a manual refresh keeps the card still — replaying the
-  // entrance on every interaction would read as a glitch, not as polish.
-  const settling = container.classList.contains('is-loading');
+  // Compact stays one line tall, so a post keeps the generic row there: its
+  // title and image are already the author and the first still.
+  if (metadata.post && !compact) {
+    renderPost(container, metadata, metadata.post, host, context);
+    return;
+  }
   container.replaceChildren();
   container.className = `glance-card${metadata.degraded ? ' is-degraded' : ''}${
     compact ? ' is-compact' : ''
   }${context.marker === 'none' ? '' : ' is-listed'}${
     context.marker === 'task' && context.line.checked ? ' is-task-checked' : ''
-  }${settling ? ' is-settling' : ''}`;
+  }`;
   container.setAttribute('aria-label', metadata.title);
 
   const body = createDiv();
@@ -215,22 +326,28 @@ export function mountCard(
   wrapper.append(card);
 
   // An embed shows the live page, not an unfurled preview, so it never needs
-  // the metadata store.
-  if (context.layout === 'embed') {
+  // the metadata store. X refuses to be framed, so a post always gets its card.
+  if (context.layout === 'embed' && !xStatusOf(context.line.url)) {
     renderEmbed(card, context, host);
     return () => {};
   }
 
   const { url, label } = context.line;
-  const current = host.store.get(url);
-  if (current) renderMetadata(card, current, host, context);
-  else createSkeleton(card, context, host);
+  let disposed = false;
+  let rendered = host.store.get(url) ?? fallbackMetadata(url, label);
+  renderMetadata(card, rendered, host, context);
 
-  const unsubscribe = host.store.subscribe(url, (metadata) => {
-    if (card.isConnected) renderMetadata(card, metadata, host, context);
-  });
-  void host.store.ensure(url, label).then((metadata) => {
-    if (card.isConnected) renderMetadata(card, metadata, host, context);
-  });
-  return unsubscribe;
+  // Markdown renderers can prepare cards off-document before attaching them.
+  // The mount lifetime, rather than DOM connectivity, owns metadata updates.
+  const update = (metadata: LinkMetadata): void => {
+    if (disposed || metadata === rendered) return;
+    rendered = metadata;
+    renderMetadata(card, metadata, host, context);
+  };
+  const unsubscribe = host.store.subscribe(url, update);
+  void host.store.ensure(url, label).then(update);
+  return () => {
+    disposed = true;
+    unsubscribe();
+  };
 }

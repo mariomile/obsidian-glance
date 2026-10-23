@@ -2,6 +2,7 @@ import { setIcon } from 'obsidian';
 
 import type { CardContext } from './card-context.ts';
 import type { CardHost } from './card.ts';
+import { xStatusOf } from './x-post.ts';
 
 /**
  * The card's action cluster.
@@ -39,13 +40,17 @@ export function createActions(
 
   const writer = context.write;
   if (context.editable && writer) {
-    const embedded = context.layout === 'embed';
-    pill.append(action(
-      'embed',
-      'app-window',
-      embedded ? 'Show card' : 'Embed web page',
-      () => writer.setLayout(embedded ? host.settings().defaultCardLayout : 'embed'),
-    ));
+    // X refuses to be framed, so a post never offers the embed toggle.
+    const post = xStatusOf(context.line.url) !== null;
+    const embedded = context.layout === 'embed' && !post;
+    if (!post) {
+      pill.append(action(
+        'embed',
+        'app-window',
+        embedded ? 'Show card' : 'Embed web page',
+        () => writer.setLayout(embedded ? host.settings().defaultCardLayout : 'embed'),
+      ));
+    }
 
     // Compact vs. expanded is meaningless for an embed, so the size toggle
     // only applies to the two card layouts.
@@ -60,21 +65,6 @@ export function createActions(
     }
   }
 
-  return pill;
-}
-
-/**
- * The skeleton state's only action: refresh alone, in its own pill.
- *
- * Without this, a card whose fetch resolves after nobody's still listening —
- * a host app that tears down and rebuilds the DOM mid-stream can lose the
- * update between mount and metadata landing — has no way back except
- * reopening the note. One retry button on the loading state closes that gap.
- */
-export function createLoadingActions(context: CardContext, host: CardHost): HTMLElement {
-  const pill = createDiv();
-  pill.className = 'glance-card__actions';
-  pill.append(refreshAction(context, host));
   return pill;
 }
 
