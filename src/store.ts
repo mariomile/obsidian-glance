@@ -1,4 +1,5 @@
 import type { LinkMetadata } from './model.ts';
+import { xStatusOf } from './x-post.ts';
 
 type Subscriber = (metadata: LinkMetadata) => void;
 
@@ -36,7 +37,11 @@ export class MetadataStore {
   isFresh(metadata: LinkMetadata): boolean {
     // Degraded entries (timeouts, blocked fetches) expire quickly so the site
     // gets retried instead of staying title-less for the whole cache TTL.
-    const ttl = metadata.degraded
+    // An X link holding only the page's tags (an entry from before post data
+    // existed, or a moment the API was down) is retried on the same short
+    // clock: those tags carry neither the text nor the media.
+    const partial = !metadata.post && xStatusOf(metadata.url) !== null;
+    const ttl = metadata.degraded || partial
       ? Math.min(this.options.ttlMs(), DEGRADED_TTL_MS)
       : this.options.ttlMs();
     return Date.now() - metadata.fetchedAt < ttl;

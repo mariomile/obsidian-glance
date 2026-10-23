@@ -1,4 +1,5 @@
 import type { CardLayout, GlanceLine, LinkSource, ListKind } from './model.ts';
+import { xStatusOf } from './x-post.ts';
 
 /**
  * Splits a line into three verbatim slices: everything before the link, the
@@ -23,11 +24,20 @@ const LINE = new RegExp(
 
 const RAW_URL = /^(https?:\/\/[^\s<>]+)$/i;
 const MARKDOWN_LINK = /^\[([^\]]+)]\((https?:\/\/[^\s)]+)(?:[ \t]+["'][^"']*["'])?\)$/i;
+/** `![alt](url)`, alt optional. Only an X post is taken over in this form:
+ *  any other embed is an image and stays Obsidian's. */
+const MARKDOWN_EMBED = /^!\[([^\]]*)]\((https?:\/\/[^\s)]+)(?:[ \t]+["'][^"']*["'])?\)$/i;
 
 function parseLink(text: string): LinkSource | null {
   const markdown = MARKDOWN_LINK.exec(text);
   if (markdown?.[1] && markdown[2] && isSafeWebUrl(markdown[2])) {
     return { url: markdown[2], label: markdown[1] };
+  }
+
+  const embed = MARKDOWN_EMBED.exec(text);
+  if (embed?.[2] && isSafeWebUrl(embed[2]) && xStatusOf(embed[2])) {
+    const label = embed[1]?.trim();
+    return { url: embed[2], ...(label ? { label } : {}) };
   }
 
   const raw = RAW_URL.exec(text);

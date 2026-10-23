@@ -87,3 +87,24 @@ test('limits metadata fetch concurrency across different URLs', async () => {
 
   assert.equal(peak, 2);
 });
+
+test('an X entry without post data is retried on the short clock', () => {
+  const store = new MetadataStore({
+    initial: {},
+    ttlMs: () => 7 * 24 * 60 * 60 * 1000,
+    maxEntries: () => 100,
+    fetcher: async (url) => metadata(url),
+    persist: () => {},
+  });
+  const hourAgo = Date.now() - 60 * 60 * 1000;
+  const page = { ...metadata('https://x.com/a/status/1'), fetchedAt: hourAgo };
+  assert.equal(store.isFresh(page), false);
+  assert.equal(
+    store.isFresh({
+      ...page,
+      post: { authorName: 'A', handle: 'a', text: 'hi', createdAt: 0, media: [] },
+    }),
+    true,
+  );
+  assert.equal(store.isFresh({ ...metadata('https://example.com'), fetchedAt: hourAgo }), true);
+});

@@ -2,6 +2,7 @@ import { setIcon } from 'obsidian';
 
 import type { CardContext } from './card-context.ts';
 import type { CardHost } from './card.ts';
+import { xStatusOf } from './x-post.ts';
 
 /**
  * The card's action cluster.
@@ -39,13 +40,17 @@ export function createActions(
 
   const writer = context.write;
   if (context.editable && writer) {
-    const embedded = context.layout === 'embed';
-    pill.append(action(
-      'embed',
-      'app-window',
-      embedded ? 'Show card' : 'Embed web page',
-      () => writer.setLayout(embedded ? host.settings().defaultCardLayout : 'embed'),
-    ));
+    // X refuses to be framed, so a post never offers the embed toggle.
+    const post = xStatusOf(context.line.url) !== null;
+    const embedded = context.layout === 'embed' && !post;
+    if (!post) {
+      pill.append(action(
+        'embed',
+        'app-window',
+        embedded ? 'Show card' : 'Embed web page',
+        () => writer.setLayout(embedded ? host.settings().defaultCardLayout : 'embed'),
+      ));
+    }
 
     // Compact vs. expanded is meaningless for an embed, so the size toggle
     // only applies to the two card layouts.

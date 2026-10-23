@@ -34,6 +34,14 @@ Standard links are supported too:
 
 Inline links inside sentences are intentionally left unchanged.
 
+### X posts
+
+A link to an X (Twitter) post renders as the post itself: author, date, full
+text, photos and video stills, and its reply, repost and like counts. This
+also covers `![](https://x.com/user/status/…)` embeds, which Obsidian would
+otherwise draw as a Twitter iframe. Any other `![](…)` embed is an image and
+stays Obsidian's.
+
 ### Card controls
 
 Hovering a card reveals its actions: edit the link, copy it, refresh the
@@ -101,8 +109,10 @@ pnpm build
 
 ## Privacy
 
-Glance sends a request only to the URL pasted by the user. It does not use a
-third-party metadata proxy or analytics service. Sites that block direct
+Glance sends a request only to the URL pasted by the user, with one exception:
+X posts are read through the public FixTweet API (`api.fxtwitter.com`),
+because x.com serves no readable metadata. That service sees the id of each
+post you render. Glance uses no analytics service. Sites that block direct
 requests fall back to a domain-only card.
 
 ## Network use
@@ -114,13 +124,16 @@ Glance makes network requests only for standalone web links in your notes:
   request to the linked URL with Obsidian's `requestUrl` to read its title,
   description and Open Graph tags. Results are cached in plugin data for the
   **Cache lifetime** set in settings.
+- **X posts**: for a link to an X post, Glance first requests
+  `https://api.fxtwitter.com/<user>/status/<id>` for the post's text, author
+  and media, and falls back to the page metadata above if that fails.
 - **Images**: the card loads the page's preview image and favicon directly
   from the URLs the page declares (or `/favicon.ico` on the same site).
 - **Web embed**: only when you switch a card to embed mode does the live page
   load in an iframe.
 
 No other servers are contacted, nothing is sent besides the request for the
-linked page itself, and there is no telemetry.
+linked page itself (or the post id, for X), and there is no telemetry.
 
 ## Try it
 

@@ -137,3 +137,14 @@ test('a transformed line still round-trips through the parser', () => {
   assert.equal(reparsed.list, 'task');
   assert.equal(serializeGlanceLine(reparsed), written);
 });
+
+test('withLink keeps an X embed an embed while it still points at a post', () => {
+  assert.equal(
+    transform('- ![Leo](https://x.com/leodev/status/1)', (line) => withLink(line, 'https://x.com/other/status/2')),
+    '- ![Leo](https://x.com/other/status/2)',
+  );
+  assert.equal(
+    transform('![Leo](https://x.com/leodev/status/1)', (line) => withLink(line, 'https://example.com')),
+    '[Leo](https://example.com)',
+  );
+});
