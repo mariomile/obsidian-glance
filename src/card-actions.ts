@@ -63,21 +63,6 @@ export function createActions(
   return pill;
 }
 
-/**
- * The skeleton state's only action: refresh alone, in its own pill.
- *
- * Without this, a card whose fetch resolves after nobody's still listening —
- * a host app that tears down and rebuilds the DOM mid-stream can lose the
- * update between mount and metadata landing — has no way back except
- * reopening the note. One retry button on the loading state closes that gap.
- */
-export function createLoadingActions(context: CardContext, host: CardHost): HTMLElement {
-  const pill = createDiv();
-  pill.className = 'glance-card__actions';
-  pill.append(refreshAction(context, host));
-  return pill;
-}
-
 function refreshAction(context: CardContext, host: CardHost): HTMLButtonElement {
   return action('refresh', 'refresh-cw', 'Refresh link preview', (button) => {
     button.addClass('is-spinning');

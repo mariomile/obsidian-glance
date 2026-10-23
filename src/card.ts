@@ -1,38 +1,14 @@
-import { createActions, createInlineEditor, createLoadingActions } from './card-actions.ts';
+import { createActions, createInlineEditor } from './card-actions.ts';
 import type { CardContext } from './card-context.ts';
 import { createMarker } from './card-marker.ts';
 import { domainLabel } from './link-source.ts';
+import { fallbackMetadata } from './metadata.ts';
 import type { GlanceSettings, LinkMetadata } from './model.ts';
 import type { MetadataStore } from './store.ts';
 
 export interface CardHost {
   store: MetadataStore;
   settings: () => GlanceSettings;
-}
-
-function createSkeleton(container: HTMLElement, context: CardContext, host: CardHost): void {
-  const compact = context.layout === 'compact';
-  container.replaceChildren();
-  container.className = `glance-card is-loading${compact ? ' is-compact' : ''}${
-    context.marker === 'none' ? '' : ' is-listed'
-  }`;
-  container.setAttribute('aria-label', `Loading preview for ${domainLabel(context.line.url)}`);
-
-  const media = createDiv();
-  media.className = 'glance-card__skeleton-media';
-  const body = createDiv();
-  body.className = 'glance-card__body';
-  for (const width of compact ? ['72%', '46%'] : ['72%', '92%', '46%']) {
-    const line = createDiv();
-    line.className = 'glance-card__skeleton-line';
-    line.style.width = width;
-    body.append(line);
-  }
-  // The slot is reserved while loading too, so the card does not shift
-  // sideways when metadata lands.
-  const marker = createMarker(context, toggleHandler(context));
-  if (marker) container.append(marker);
-  container.append(body, media, createLoadingActions(context, host));
 }
 
 /** Opens the inline editor at the top of the card body. Undefined without a
@@ -94,16 +70,12 @@ function renderMetadata(
   context: CardContext,
 ): void {
   const compact = context.layout === 'compact';
-  // Only the skeleton-to-content swap is choreographed. A re-render from a
-  // checkbox tick or a manual refresh keeps the card still — replaying the
-  // entrance on every interaction would read as a glitch, not as polish.
-  const settling = container.classList.contains('is-loading');
   container.replaceChildren();
   container.className = `glance-card${metadata.degraded ? ' is-degraded' : ''}${
     compact ? ' is-compact' : ''
   }${context.marker === 'none' ? '' : ' is-listed'}${
     context.marker === 'task' && context.line.checked ? ' is-task-checked' : ''
-  }${settling ? ' is-settling' : ''}`;
+  }`;
   container.setAttribute('aria-label', metadata.title);
 
   const body = createDiv();
@@ -222,15 +194,21 @@ export function mountCard(
   }
 
   const { url, label } = context.line;
-  const current = host.store.get(url);
-  if (current) renderMetadata(card, current, host, context);
-  else createSkeleton(card, context, host);
+  let disposed = false;
+  let rendered = host.store.get(url) ?? fallbackMetadata(url, label);
+  renderMetadata(card, rendered, host, context);
 
-  const unsubscribe = host.store.subscribe(url, (metadata) => {
-    if (card.isConnected) renderMetadata(card, metadata, host, context);
-  });
-  void host.store.ensure(url, label).then((metadata) => {
-    if (card.isConnected) renderMetadata(card, metadata, host, context);
-  });
-  return unsubscribe;
+  // Markdown renderers can prepare cards off-document before attaching them.
+  // The mount lifetime, rather than DOM connectivity, owns metadata updates.
+  const update = (metadata: LinkMetadata): void => {
+    if (disposed || metadata === rendered) return;
+    rendered = metadata;
+    renderMetadata(card, metadata, host, context);
+  };
+  const unsubscribe = host.store.subscribe(url, update);
+  void host.store.ensure(url, label).then(update);
+  return () => {
+    disposed = true;
+    unsubscribe();
+  };
 }
