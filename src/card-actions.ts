@@ -58,7 +58,7 @@ export function createActions(
       const compact = context.layout === 'compact';
       pill.append(action(
         'size',
-        compact ? 'chevrons-up-down' : 'chevrons-down-up',
+        compact ? 'maximize-2' : 'minimize-2',
         compact ? 'Expand card' : 'Collapse card',
         () => writer.setLayout(compact ? 'expanded' : 'compact'),
       ));
