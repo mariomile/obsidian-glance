@@ -124,10 +124,10 @@ test('formats a readable domain label', () => {
 });
 
 test('takes over an X embed, alt text as the label', () => {
-  const line = parseGlanceLine('![Leo (@leodev) 28 likes · 2 replies](https://x.com/leodev/status/2110373428456820809?s=12)');
-  assert.equal(line?.url, 'https://x.com/leodev/status/2110373428456820809?s=12');
-  assert.equal(line?.label, 'Leo (@leodev) 28 likes · 2 replies');
-  assert.equal(line && serializeGlanceLine(line), '![Leo (@leodev) 28 likes · 2 replies](https://x.com/leodev/status/2110373428456820809?s=12)');
+  const line = parseGlanceLine('![Ada (@ada) 28 likes · 2 replies](https://x.com/ada/status/1234567890123456789?s=12)');
+  assert.equal(line?.url, 'https://x.com/ada/status/1234567890123456789?s=12');
+  assert.equal(line?.label, 'Ada (@ada) 28 likes · 2 replies');
+  assert.equal(line && serializeGlanceLine(line), '![Ada (@ada) 28 likes · 2 replies](https://x.com/ada/status/1234567890123456789?s=12)');
 });
 
 test('takes over an X embed with no alt text, inside a list', () => {
@@ -139,5 +139,5 @@ test('takes over an X embed with no alt text, inside a list', () => {
 
 test('leaves every other embed to Obsidian', () => {
   assert.equal(parseGlanceLine('![chart](https://example.com/chart.png)'), null);
-  assert.equal(parseGlanceLine('![](https://x.com/leodev)'), null);
+  assert.equal(parseGlanceLine('![](https://x.com/ada)'), null);
 });

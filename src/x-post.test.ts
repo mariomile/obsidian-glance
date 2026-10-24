@@ -4,9 +4,9 @@ import test from 'node:test';
 import { xApiUrl, xPostMetadata, xStatusOf } from './x-post.ts';
 
 test('recognises X and Twitter post URLs, share params included', () => {
-  assert.deepEqual(xStatusOf('https://x.com/leodev/status/2110373428456820809?s=12'), {
-    handle: 'leodev',
-    id: '2110373428456820809',
+  assert.deepEqual(xStatusOf('https://x.com/ada/status/1234567890123456789?s=12'), {
+    handle: 'ada',
+    id: '1234567890123456789',
   });
   assert.deepEqual(xStatusOf('https://twitter.com/a_b/status/1/photo/1'), { handle: 'a_b', id: '1' });
   assert.deepEqual(xStatusOf('https://www.x.com/user/statuses/42'), { handle: 'user', id: '42' });
@@ -15,7 +15,7 @@ test('recognises X and Twitter post URLs, share params included', () => {
 });
 
 test('ignores everything that is not a single post', () => {
-  assert.equal(xStatusOf('https://x.com/leodev'), null);
+  assert.equal(xStatusOf('https://x.com/ada'), null);
   assert.equal(xStatusOf('https://x.com/home'), null);
   assert.equal(xStatusOf('https://notx.com/a/status/1'), null);
   assert.equal(xStatusOf('https://example.com/a/status/1'), null);
@@ -23,22 +23,22 @@ test('ignores everything that is not a single post', () => {
 });
 
 test('builds the API URL, with a stand-in handle when the link has none', () => {
-  assert.equal(xApiUrl({ handle: 'leodev', id: '5' }), 'https://api.fxtwitter.com/leodev/status/5');
+  assert.equal(xApiUrl({ handle: 'ada', id: '5' }), 'https://api.fxtwitter.com/ada/status/5');
   assert.equal(xApiUrl({ id: '5' }), 'https://api.fxtwitter.com/i/status/5');
 });
 
 const body = {
   code: 200,
   tweet: {
-    text: "here's my workflow\n\nsetup:\n- t3 code",
-    created_timestamp: 1791987208,
+    text: "notes on shipping\n\nsteps:\n- write it down",
+    created_timestamp: 1700000000,
     likes: 327,
     replies: 25,
     retweets: 8,
     author: {
-      name: 'Leo',
-      screen_name: 'leodev',
-      avatar_url: 'https://pbs.twimg.com/profile_images/1/a_200x200.jpg',
+      name: 'Ada',
+      screen_name: 'ada',
+      avatar_url: 'https://pbs.twimg.com/profile_images/1/ada_200x200.jpg',
     },
     media: {
       all: [
@@ -51,17 +51,17 @@ const body = {
 };
 
 test('maps a post onto card metadata, text and media intact', () => {
-  const url = 'https://x.com/leodev/status/2110373428456820809?s=12';
+  const url = 'https://x.com/ada/status/1234567890123456789?s=12';
   const metadata = xPostMetadata(body, url, 1);
   assert.ok(metadata?.post);
   assert.equal(metadata.url, url);
-  assert.equal(metadata.title, 'Leo (@leodev)');
-  assert.equal(metadata.description, "here's my workflow setup: - t3 code");
+  assert.equal(metadata.title, 'Ada (@ada)');
+  assert.equal(metadata.description, "notes on shipping steps: - write it down");
   assert.equal(metadata.image, 'https://pbs.twimg.com/media/a.jpg');
   assert.equal(metadata.siteName, 'x.com');
   assert.equal(metadata.degraded, false);
-  assert.equal(metadata.post.text, "here's my workflow\n\nsetup:\n- t3 code");
-  assert.equal(metadata.post.createdAt, 1791987208000);
+  assert.equal(metadata.post.text, "notes on shipping\n\nsteps:\n- write it down");
+  assert.equal(metadata.post.createdAt, 1700000000000);
   assert.equal(metadata.post.likes, 327);
   assert.equal(metadata.post.reposts, 8);
   assert.deepEqual(metadata.post.media, [
