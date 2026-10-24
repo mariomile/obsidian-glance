@@ -110,11 +110,11 @@ test('a transformed line still round-trips through the parser', () => {
 
 test('withLink keeps an X embed an embed while it still points at a post', () => {
   assert.equal(
-    transform('- ![Leo](https://x.com/leodev/status/1)', (line) => withLink(line, 'https://x.com/other/status/2')),
-    '- ![Leo](https://x.com/other/status/2)',
+    transform('- ![Ada](https://x.com/ada/status/1)', (line) => withLink(line, 'https://x.com/other/status/2')),
+    '- ![Ada](https://x.com/other/status/2)',
   );
   assert.equal(
-    transform('![Leo](https://x.com/leodev/status/1)', (line) => withLink(line, 'https://example.com')),
-    '[Leo](https://example.com)',
+    transform('![Ada](https://x.com/ada/status/1)', (line) => withLink(line, 'https://example.com')),
+    '[Ada](https://example.com)',
   );
 });

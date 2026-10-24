@@ -186,7 +186,7 @@ function renderPost(
 }
 
 /** A post as one row: what was said leads, who said it moves to the footer.
- *  "Jaynit (@jaynitx)" alone would say nothing about why the link is there. */
+ *  "Ada (@ada)" alone would say nothing about why the link is there. */
 function compactPost(metadata: LinkMetadata, post: XPost): LinkMetadata {
   const firstLine = post.text.split('\n').map((line) => line.trim()).find(Boolean);
   return {

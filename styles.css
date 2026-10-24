@@ -52,7 +52,17 @@ li > .glance-reading-card {
    one more item of the outline, not as a box dropped into it. */
 .glance-editor-card.is-inline .glance-card {
   padding-top: 3px;
-  padding-left: 0;
+}
+
+/* With no left padding the hover wash would start on the text edge, and the
+   card radius would round right through the title and the favicon. The wash
+   bleeds 4px left instead, up to the bullet's edge, the text stays on the
+   column, and a list row takes the small radius of a row, not of a card. */
+.glance-editor-card.is-inline .glance-card,
+li > .glance-reading-card .glance-card {
+  margin-left: -4px;
+  padding-left: 4px;
+  border-radius: var(--radius-s, 6px);
 }
 
 /* Reading mode keeps Obsidian's own <li>, whose bullet hangs left of the item's
@@ -60,7 +70,6 @@ li > .glance-reading-card {
    bullet's line. */
 li > .glance-reading-card .glance-card {
   padding-top: 1px;
-  padding-left: 0;
 }
 
 /* Text from the top, so the title shares the bullet's line however tall the
