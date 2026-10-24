@@ -26,6 +26,8 @@ export interface CardContext {
   editable: boolean;
   /** Present only when `editable`. */
   write?: CardWriter;
+  /** Focuses this card's current source line without changing Markdown. */
+  onSelect?: () => void;
   /** Tells the editor to hold this line's card while its input has focus. */
   onEditBegin?: () => void;
   onEditEnd?: () => void;

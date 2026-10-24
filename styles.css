@@ -302,8 +302,8 @@ li > .glance-reading-card .glance-card__body {
 }
 
 /* mv-kit §6: gated, see the .glance-card:hover comment above — the pill is
-   forced visible (opacity: 1) on phone via the @media (max-width: 600px)
-   block below, so a stuck hover-triggered reveal here is directly reachable
+   forced visible (opacity: 1) on narrow screens and devices without hover
+   below, so a stuck hover-triggered reveal here is directly reachable
    on touch otherwise. */
 @media (hover: hover) {
   .glance-card:hover .glance-card__actions {
@@ -631,10 +631,9 @@ li > .glance-reading-card .glance-card__body {
   }
 }
 
-/* Touch, not width. These two are properties of the input device, not of the
-   available space, so they stay on a viewport query while everything
-   dimensional above moved to @container. */
-@media (max-width: 600px) {
+/* Keep actions discoverable on touch devices at every width, including tablets.
+   Narrow desktop panes retain the always-visible controls as well. */
+@media (max-width: 600px), (hover: none) {
   .glance-card__actions {
     opacity: 1;
   }

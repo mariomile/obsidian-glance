@@ -70,7 +70,7 @@ function postStats(post: XPost): string[] {
 }
 
 /** Up to four stills in the post's own order. A video shows its poster with a
- *  play glyph: the card opens the post, it does not play it. */
+ *  play glyph: the Open on X action opens the original, it does not play it. */
 function createPostMedia(post: XPost): HTMLElement | null {
   const items = post.media.slice(0, 4);
   if (items.length === 0) return null;
@@ -175,14 +175,7 @@ function renderPost(
   footer.append(site);
   body.append(footer);
 
-  const link = createEl('a');
-  link.className = 'glance-card__link';
-  link.href = context.line.url;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  link.setAttribute('aria-label', `Open post by ${metadata.title}`);
-
-  container.append(body, createActions(context, host, startEdit(context, body)), link);
+  container.append(body, createActions(context, host, startEdit(context, body)));
 }
 
 /** A post as one row: what was said leads, who said it moves to the footer.
@@ -248,19 +241,22 @@ function renderMetadata(
   footer.append(site);
   body.append(footer);
 
-  const link = createEl('a');
-  link.className = 'glance-card__link';
-  link.href = context.line.url;
-  link.target = '_blank';
-  link.rel = 'noopener noreferrer';
-  link.setAttribute('aria-label', `Open ${metadata.title}`);
-
   // DOM order is visual order: body, then media. The stylesheet no longer
   // reorders them with `order`.
   const media = host.settings().showThumbnail && metadata.image ? createImage(metadata) : null;
   container.append(body);
   if (media) container.append(media);
-  container.append(createActions(context, host, startEdit(context, body)), link);
+  container.append(createActions(context, host, startEdit(context, body)));
+  // X posts, including compact and unresolved cards, open only via their icon.
+  if (!xStatusOf(context.line.url)) {
+    const link = createEl('a');
+    link.className = 'glance-card__link';
+    link.href = context.line.url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.setAttribute('aria-label', `Open ${metadata.title}`);
+    container.append(link);
+  }
 }
 
 /**
@@ -315,6 +311,16 @@ export function mountCard(
   // ever touches the wrapper's class list.
   const card = createDiv();
   wrapper.append(card);
+  if (xStatusOf(context.line.url) && context.onSelect) {
+    card.addEventListener('click', (event) => {
+      const target = event.targetNode;
+      if (event.defaultPrevented || !target?.instanceOf(Element)) return;
+      if (target.closest('a, button, input, textarea, select')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      context.onSelect?.();
+    });
+  }
 
   // An embed shows the live page, not an unfurled preview, so it never needs
   // the metadata store. X refuses to be framed, so a post always gets its card.

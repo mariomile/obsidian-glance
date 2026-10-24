@@ -59,6 +59,17 @@ class LinkCardWidget extends WidgetType {
     const context: CardContext = {
       ...this.context,
       write: bindWriter(view, wrapper),
+      onSelect: () => {
+        // Resolve at interaction time: edits above the card may have moved it.
+        const target = view.state.doc.lineAt(view.posAtDOM(wrapper));
+        const line = parseGlanceLine(target.text);
+        if (!line) return;
+        view.dispatch({
+          selection: { anchor: target.from + line.prefix.length },
+          scrollIntoView: true,
+        });
+        view.focus();
+      },
       // Effects only, never changes — the decoration pipeline stays pure.
       onEditBegin: () => {
         const pos = view.posAtDOM(wrapper);
