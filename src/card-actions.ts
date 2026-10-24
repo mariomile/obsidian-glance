@@ -10,7 +10,7 @@ import { xStatusOf } from './x-post.ts';
  * One shared surface rather than four independent boxes: four shadowed 28px
  * squares would checkerboard 122px of artwork. Edit and the size toggle render
  * only where the card can write back to its line, which is what leaves Reading
- * mode with copy and refresh alone — no second branch in the renderer.
+ * mode without editing controls — no second branch in the renderer.
  */
 export function createActions(
   context: CardContext,
@@ -19,6 +19,20 @@ export function createActions(
 ): HTMLElement {
   const pill = createDiv();
   pill.className = 'glance-card__actions';
+
+  const post = xStatusOf(context.line.url) !== null;
+  if (post) {
+    const open = createEl('a');
+    open.className = 'glance-card__action glance-card__action--open clickable-icon';
+    open.href = context.line.url;
+    open.target = '_blank';
+    open.rel = 'noopener noreferrer';
+    open.setAttribute('aria-label', 'Open on X');
+    setIcon(open, 'external-link');
+    // Keep native link navigation, without selecting the editor line below.
+    open.addEventListener('click', (event) => event.stopPropagation());
+    pill.append(open);
+  }
 
   if (context.editable && onEdit) {
     pill.append(action('edit', 'pencil', 'Edit link', () => onEdit()));
@@ -41,7 +55,6 @@ export function createActions(
   const writer = context.write;
   if (context.editable && writer) {
     // X refuses to be framed, so a post never offers the embed toggle.
-    const post = xStatusOf(context.line.url) !== null;
     const embedded = context.layout === 'embed' && !post;
     if (!post) {
       pill.append(action(

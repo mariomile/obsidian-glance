@@ -42,6 +42,11 @@ also covers `![](https://x.com/user/status/…)` embeds, which Obsidian would
 otherwise draw as a Twitter iframe. Any other `![](…)` embed is an image and
 stays Obsidian's.
 
+In Live Preview, click or tap a post to focus its source line for normal
+editing, list formatting and moving. To open the original post, use the
+**Open on X** icon in its action bar. This also applies to compact cards and
+posts whose metadata has not loaded yet. Reading mode uses the same icon.
+
 ### Card controls
 
 Hovering a card reveals its actions: edit the link, copy it, refresh the
