@@ -64,10 +64,14 @@ export interface LinkMetadata {
   degraded: boolean;
 }
 
+/** 'default' follows `defaultCardLayout`, the same as a line outside a list. */
+export type ListCardLayout = 'compact' | 'expanded' | 'default';
+
 export interface GlanceSettings {
   showDescription: boolean;
   showThumbnail: boolean;
   defaultCardLayout: CardLayout;
+  listCardLayout: ListCardLayout;
   cacheTtlHours: number;
   maxCacheEntries: number;
 }
@@ -81,6 +85,7 @@ export const DEFAULT_SETTINGS: GlanceSettings = {
   showDescription: true,
   showThumbnail: true,
   defaultCardLayout: 'expanded',
+  listCardLayout: 'compact',
   cacheTtlHours: 168,
   maxCacheEntries: 400,
 };

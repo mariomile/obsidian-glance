@@ -16,7 +16,14 @@ import { xStatusOf } from './x-post.ts';
  *  cards in Reading mode. */
 function isListChrome(node: Node): boolean {
   if (node.instanceOf(HTMLInputElement)) return true;
-  return node.instanceOf(HTMLElement) && node.hasClass('list-bullet');
+  return node.instanceOf(HTMLElement) &&
+    (node.hasClass('list-bullet') || node.hasClass('list-collapse-indicator'));
+}
+
+/** An item's own sub-list. It belongs to the item, not to its line, so it
+ *  stays where it is under the card. */
+function isSubList(node: Node): boolean {
+  return node.instanceOf(HTMLElement) && (node.tagName === 'UL' || node.tagName === 'OL');
 }
 
 function onlyExternalAnchor(container: HTMLElement): HTMLAnchorElement | null {
@@ -26,7 +33,7 @@ function onlyExternalAnchor(container: HTMLElement): HTMLAnchorElement | null {
   if (!anchor || !/^https?:\/\//i.test(anchor.href)) return null;
 
   const hasOtherContent = Array.from(container.childNodes).some((node) => {
-    if (node === anchor || isListChrome(node)) return false;
+    if (node === anchor || isListChrome(node) || isSubList(node)) return false;
     return (node.textContent ?? '').trim().length > 0;
   });
   return hasOtherContent ? null : anchor;
@@ -58,7 +65,10 @@ function neighbour(node: Node, forward: boolean): Node | null {
 }
 
 function isLineEdge(node: Node | null): boolean {
-  return node === null || (node.instanceOf(HTMLElement) && node.tagName === 'BR') || isListChrome(node);
+  return node === null ||
+    (node.instanceOf(HTMLElement) && node.tagName === 'BR') ||
+    isListChrome(node) ||
+    isSubList(node);
 }
 
 /** X embeds that stand alone on their own source line, the embed counterpart
@@ -79,6 +89,14 @@ function lineXEmbeds(container: HTMLElement): { node: Element; id: string }[] {
 function dropLineBreak(node: Element): void {
   const next = neighbour(node, true);
   if (next?.instanceOf(HTMLElement) && next.tagName === 'BR') next.remove();
+}
+
+function normalizedUrl(value: string): string {
+  try {
+    return new URL(value).href;
+  } catch {
+    return value;
+  }
 }
 
 /**
@@ -147,9 +165,6 @@ function mountFor(
   const context: CardContext = {
     line,
     layout: resolveLayout(line, host.settings()),
-    // Obsidian's own bullet and checkbox stay in place here, so the card
-    // draws neither.
-    marker: 'none',
     editable: false,
   };
   return { card, mount: new ReadingCardMount(card, context, host) };
@@ -161,8 +176,12 @@ export function glanceReadingProcessor(host: CardHost): MarkdownPostProcessor {
     // appears twice in one section still maps to its own line and its own
     // marker.
     const candidates = sectionLines(element, context);
+    // The DOM hands back `anchor.href`, which the browser normalises
+    // (`https://obsidian.md` becomes `https://obsidian.md/`), so both sides
+    // are compared normalised or the line, its list kind and marker are lost.
     const takeLine = (url: string): GlanceLine | undefined => {
-      const index = candidates.findIndex((line) => line.url === url);
+      const target = normalizedUrl(url);
+      const index = candidates.findIndex((line) => normalizedUrl(line.url) === target);
       return index === -1 ? undefined : candidates.splice(index, 1)[0];
     };
     // An embed may already be the platform iframe, whose src no longer holds
@@ -211,11 +230,12 @@ export function glanceReadingProcessor(host: CardHost): MarkdownPostProcessor {
 
     // Tight list items render as <li><a/></li>: keep the list structure (and
     // its bullet marker) and swap only the anchor for the card. Task items are
-    // included — their native checkbox stays put and keeps working — but items
-    // with nested lists are left untouched.
+    // included, their native checkbox stays put and keeps working, and so are
+    // items with sub-bullets: the card takes the item's line and the sub-list
+    // stays under it, the way Live Preview draws the same lines.
     for (const item of Array.from(element.querySelectorAll<HTMLLIElement>('li'))) {
       if (item.closest('.glance-card')) continue;
-      if (item.querySelector('ul, ol, .glance-reading-card')) continue;
+      if (item.querySelector(':scope > .glance-reading-card')) continue;
       if (mountEmbeds(item) > 0) continue;
       const anchor = onlyExternalAnchor(item);
       if (!anchor) continue;

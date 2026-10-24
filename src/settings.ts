@@ -1,7 +1,7 @@
 import { Notice, PluginSettingTab, Setting, type App } from 'obsidian';
 
 import type GlancePlugin from './main.ts';
-import type { CardLayout } from './model.ts';
+import type { CardLayout, ListCardLayout } from './model.ts';
 
 export class GlanceSettingTab extends PluginSettingTab {
   constructor(app: App, private readonly plugin: GlancePlugin) {
@@ -47,6 +47,20 @@ export class GlanceSettingTab extends PluginSettingTab {
         .setValue(this.plugin.settings.defaultCardLayout)
         .onChange(async (value) => {
           this.plugin.settings.defaultCardLayout = value as CardLayout;
+          await this.plugin.savePluginData();
+          this.plugin.refreshEditors();
+        }));
+
+    new Setting(containerEl)
+      .setName('Card size in lists')
+      .setDesc('Bullet, numbered and task items. A line marker still overrides it.')
+      .addDropdown((dropdown) => dropdown
+        .addOption('compact', 'Compact')
+        .addOption('expanded', 'Expanded')
+        .addOption('default', 'Same as default card size')
+        .setValue(this.plugin.settings.listCardLayout)
+        .onChange(async (value) => {
+          this.plugin.settings.listCardLayout = value as ListCardLayout;
           await this.plugin.savePluginData();
           this.plugin.refreshEditors();
         }));

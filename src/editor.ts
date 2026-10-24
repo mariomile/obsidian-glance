@@ -40,7 +40,7 @@ class LinkCardWidget extends WidgetType {
     return this.context.line.url === other.context.line.url &&
       this.context.line.label === other.context.line.label &&
       this.context.layout === other.context.layout &&
-      this.context.marker === other.context.marker &&
+      this.context.line.list === other.context.line.list &&
       this.context.line.checked === other.context.line.checked &&
       this.context.line.indentLevel === other.context.line.indentLevel &&
       this.showDescription === other.showDescription &&
@@ -48,11 +48,12 @@ class LinkCardWidget extends WidgetType {
   }
 
   toDOM(view: EditorView): HTMLElement {
-    const wrapper = createDiv();
-    wrapper.className = 'glance-editor-card';
-    // Live Preview replaces the whole line, indent included, so the nesting
-    // has to be re-applied to the wrapper.
-    wrapper.style.setProperty('--glance-indent', String(this.context.line.indentLevel));
+    // A list card sits inside its native line, after Obsidian's own bullet or
+    // checkbox; every other card replaces its whole line as a block.
+    const inline = this.context.line.list !== 'none';
+    const wrapper = inline ? createSpan() : createDiv();
+    wrapper.className = inline ? 'glance-editor-card is-inline' : 'glance-editor-card';
+    if (!inline) wrapper.style.setProperty('--glance-indent', String(this.context.line.indentLevel));
     // The writer resolves its own position at click time, so it is bound to
     // the wrapper rather than to a position captured now.
     const context: CardContext = {
@@ -127,13 +128,20 @@ function lineDecoration(
   const context: CardContext = {
     line,
     layout: resolveLayout(line, host.settings()),
-    marker: line.list,
     editable: true,
   };
 
   // `Decoration.replace` is visual only: the URL stays in EditorState and
   // on disk. Using CodeMirror's native replacement keeps the hidden range
   // cursor-addressable, unlike applying `display: none` to its text DOM.
+  // A list line keeps its prefix (indent, marker, checkbox) as live text and
+  // only the link is replaced, inline, the way Obsidian embeds images in a
+  // list item: indent, folding and the native checkbox stay Obsidian's.
+  if (line.list !== 'none') {
+    return Decoration.replace({
+      widget: new LinkCardWidget(context, host),
+    }).range(lineFrom + line.prefix.length, lineTo);
+  }
   return Decoration.replace({
     widget: new LinkCardWidget(context, host),
     block: true,

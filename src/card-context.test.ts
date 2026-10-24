@@ -44,3 +44,25 @@ test('the override applies inside lists and tasks too', () => {
     'compact',
   );
 });
+
+test('a list item takes the list size, whatever the global default', () => {
+  const settings = { ...settingsWith('expanded'), listCardLayout: 'compact' as const };
+  assert.equal(resolveLayout(lineOf('- https://example.com'), settings), 'compact');
+  assert.equal(resolveLayout(lineOf('\t- [ ] https://example.com'), settings), 'compact');
+  assert.equal(resolveLayout(lineOf('2. ![](https://x.com/a/status/1)'), settings), 'compact');
+  assert.equal(resolveLayout(lineOf('https://example.com'), settings), 'expanded');
+});
+
+test('a marker still beats the list size', () => {
+  const settings = { ...settingsWith('expanded'), listCardLayout: 'compact' as const };
+  assert.equal(resolveLayout(lineOf('- https://example.com %%glance:expand%%'), settings), 'expanded');
+});
+
+test("'default' makes list items follow the global default", () => {
+  const settings = { ...settingsWith('expanded'), listCardLayout: 'default' as const };
+  assert.equal(resolveLayout(lineOf('- https://example.com'), settings), 'expanded');
+  assert.equal(
+    resolveLayout(lineOf('- https://example.com'), { ...settings, defaultCardLayout: 'compact' }),
+    'compact',
+  );
+});
