@@ -1,4 +1,4 @@
-import type { CardLayout, GlanceLine, GlanceSettings, ListKind } from './model.ts';
+import type { CardLayout, GlanceLine, GlanceSettings } from './model.ts';
 
 /**
  * Everything that varies per mounted card.
@@ -10,24 +10,18 @@ import type { CardLayout, GlanceLine, GlanceSettings, ListKind } from './model.t
  * import that does not point back at `card.ts`.
  */
 /**
- * The three ways a card may write back to its own line. Implemented by
+ * The two ways a card may write back to its own line. Implemented by
  * `line-write.ts`, declared here so this module keeps no dependencies.
  */
 export interface CardWriter {
   setLink(url: string): void;
   setLayout(layout: CardLayout | undefined): void;
-  setChecked(checked: boolean): void;
 }
 
 export interface CardContext {
   line: GlanceLine;
   /** Already resolved against the setting. */
   layout: CardLayout;
-  /**
-   * The marker the card must draw itself. Reading mode passes 'none' because
-   * Obsidian's own bullet and checkbox stay in place there.
-   */
-  marker: ListKind;
   /** True only in Live Preview, where the card can write back to the line. */
   editable: boolean;
   /** Present only when `editable`. */
@@ -37,6 +31,10 @@ export interface CardContext {
   onEditEnd?: () => void;
 }
 
+/** A marker on the line wins; otherwise a list item takes the list size, so
+ *  a card in an outline stays one row and the bullets around it stay legible. */
 export function resolveLayout(line: GlanceLine, settings: GlanceSettings): CardLayout {
-  return line.layout ?? settings.defaultCardLayout;
+  if (line.layout) return line.layout;
+  if (line.list !== 'none' && settings.listCardLayout !== 'default') return settings.listCardLayout;
+  return settings.defaultCardLayout;
 }

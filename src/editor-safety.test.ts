@@ -36,7 +36,6 @@ test('card.ts never restyles the wrapper element it is handed', async () => {
 
 const lineWriteSourceUrl = new URL('./line-write.ts', import.meta.url);
 const cardActionsSourceUrl = new URL('./card-actions.ts', import.meta.url);
-const cardMarkerSourceUrl = new URL('./card-marker.ts', import.meta.url);
 
 test('line-write.ts is the only module that dispatches a document change', async () => {
   // README's source-pure promise rests on the decoration pipeline never
@@ -46,7 +45,7 @@ test('line-write.ts is the only module that dispatches a document change', async
   const writeSource = await readFile(lineWriteSourceUrl, 'utf8');
   assert.match(writeSource, /view\.dispatch\(\{\s*changes:/);
 
-  for (const url of [cardSourceUrl, cardActionsSourceUrl, cardMarkerSourceUrl]) {
+  for (const url of [cardSourceUrl, cardActionsSourceUrl]) {
     const source = await readFile(url, 'utf8');
     assert.doesNotMatch(source, /\.dispatch\(/, `unexpected dispatch in ${url.pathname}`);
   }

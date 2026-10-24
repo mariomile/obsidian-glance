@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { withChecked, withLayout, withLink } from './line-write.ts';
+import { withLayout, withLink } from './line-write.ts';
 import { parseGlanceLine, serializeGlanceLine } from './link-source.ts';
 import type { GlanceLine } from './model.ts';
 
@@ -14,35 +14,6 @@ function lineOf(text: string): GlanceLine {
 function transform(text: string, change: (line: GlanceLine) => GlanceLine): string {
   return serializeGlanceLine(change(lineOf(text)));
 }
-
-test('withChecked flips only the checkbox character', () => {
-  assert.equal(
-    transform('- [ ] https://example.com', (line) => withChecked(line, true)),
-    '- [x] https://example.com',
-  );
-  assert.equal(
-    transform('- [x] https://example.com', (line) => withChecked(line, false)),
-    '- [ ] https://example.com',
-  );
-});
-
-test('withChecked preserves indentation, spacing and the layout marker', () => {
-  assert.equal(
-    transform('\t-   [ ] https://example.com %%glance:compact%%', (line) => withChecked(line, true)),
-    '\t-   [x] https://example.com %%glance:compact%%',
-  );
-});
-
-test('withChecked is a no-op on a line that is not a task', () => {
-  assert.equal(
-    transform('- https://example.com', (line) => withChecked(line, true)),
-    '- https://example.com',
-  );
-  assert.equal(
-    transform('https://example.com', (line) => withChecked(line, true)),
-    'https://example.com',
-  );
-});
 
 test('withLayout adds, replaces and removes the marker', () => {
   assert.equal(
@@ -122,7 +93,6 @@ test('withLink rejects a non-web url and returns the line unchanged', () => {
 
 test('the transforms never mutate their input', () => {
   const line = lineOf('- [ ] https://example.com');
-  withChecked(line, true);
   withLayout(line, 'compact');
   withLink(line, 'https://other.test');
   assert.equal(serializeGlanceLine(line), '- [ ] https://example.com');
@@ -131,9 +101,9 @@ test('the transforms never mutate their input', () => {
 });
 
 test('a transformed line still round-trips through the parser', () => {
-  const written = transform('- [ ] https://example.com', (line) => withChecked(line, true));
+  const written = transform('- [ ] https://example.com', (line) => withLayout(line, 'compact'));
   const reparsed = lineOf(written);
-  assert.equal(reparsed.checked, true);
+  assert.equal(reparsed.layout, 'compact');
   assert.equal(reparsed.list, 'task');
   assert.equal(serializeGlanceLine(reparsed), written);
 });

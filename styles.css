@@ -16,6 +16,60 @@ li > .glance-reading-card {
   margin: 0.15rem 0;
 }
 
+/* A list card replaces only the link, inside Obsidian's own list line. The line
+   carries a negative text-indent with a matching padding, so the bullet hangs
+   in the gutter and the inline-block fills exactly the text column beside it.
+   The text-indent must not leak into the card's own lines. */
+/* One pixel short of the column: the bullet's measured width is fractional, and
+   a card exactly 100% wide overflows it by a sub-pixel and wraps under it. */
+.glance-editor-card.is-inline {
+  display: inline-block;
+  width: calc(100% - 1px);
+  margin: 0;
+  text-indent: 0;
+  white-space: normal;
+  vertical-align: top;
+}
+
+/* Obsidian measures a list line's hanging indent by clearing it and reading
+   where the text after the bullet starts. Without its indent the card no
+   longer fits beside the bullet, so it would wrap and Obsidian would measure
+   the wrapped position: a level-two item got the indent of a level-one. The
+   card never wraps away from its bullet, so the measurement is always right. */
+.cm-line:has(> .glance-editor-card.is-inline) {
+  white-space: nowrap;
+}
+
+/* Obsidian strikes a done task's whole line. Here that would leave only the
+   space before the card struck, a stray dash; the card marks itself done
+   through .is-task-checked instead. The :has() outranks Obsidian's selector
+   on specificity, never on !important. */
+.markdown-source-view.mod-cm6 .HyperMD-task-line:has(> .glance-editor-card.is-inline) {
+  text-decoration: none;
+}
+
+/* The title starts where the sibling bullets' text starts, so a card reads as
+   one more item of the outline, not as a box dropped into it. */
+.glance-editor-card.is-inline .glance-card {
+  padding-top: 3px;
+  padding-left: 0;
+}
+
+/* Reading mode keeps Obsidian's own <li>, whose bullet hangs left of the item's
+   text column, so the same alignment holds: title on the text edge and on the
+   bullet's line. */
+li > .glance-reading-card .glance-card {
+  padding-top: 1px;
+  padding-left: 0;
+}
+
+/* Text from the top, so the title shares the bullet's line however tall the
+   thumbnail beside it makes the card. */
+.glance-editor-card.is-inline .glance-card__body,
+li > .glance-reading-card .glance-card__body {
+  justify-content: flex-start;
+}
+
 /* Live Preview replaces the whole line, indent included, so the nesting has to
    be re-applied here. Reading mode keeps its real <li> nesting and needs none
    of this. */
@@ -113,51 +167,11 @@ li > .glance-reading-card {
   gap: 5px;
 }
 
-/* The list marker the block decoration swallowed, redrawn by the card.
-   `align-self: flex-start` is load-bearing: as a stretched flex item the slot
-   would span the whole body and centre the bullet against the description
-   instead of the title. Pinned to the top and given exactly one title line of
-   height, the marker centres on that first line — where a list marker belongs. */
-.glance-card__marker {
-  display: flex;
-  flex: 0 0 auto;
-  align-self: flex-start;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 21px;
-  color: var(--text-faint);
-  font-family: var(--font-interface);
-  font-size: 13px;
-  line-height: 1.25;
-}
-
-.glance-card__marker--bullet::before {
-  content: '';
-  width: 5px;
-  height: 5px;
-  background: currentColor;
-  border-radius: 50%;
-}
-
-.glance-card__marker--task {
-  color: var(--text-muted);
-}
-
 /* A completed task reads as done at a glance, the same way Obsidian's own
    task-list-item does. */
 .glance-card.is-task-checked .glance-card__title {
   color: var(--text-muted);
   text-decoration: line-through;
-}
-
-/* A taller image makes the card taller than its text block, and a centred body
-   then pushes the title down away from the top-pinned marker. In a list item
-   the text starts at the top and a taller image simply runs on below it, so
-   both share one origin and the marker lines up with the title by
-   construction. */
-.glance-card.is-listed .glance-card__body {
-  justify-content: flex-start;
 }
 
 /* The inline link editor, prepended into the body so title and footer stay

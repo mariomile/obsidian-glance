@@ -17,17 +17,6 @@ import { xStatusOf } from './x-post.ts';
  * editor-safety.test.ts.
  */
 
-export function withChecked(line: GlanceLine, checked: boolean): GlanceLine {
-  if (line.list !== 'task') return line;
-  return {
-    ...line,
-    checked,
-    // The checkbox is the only bracketed pair in the prefix, so a single
-    // targeted replacement leaves indentation and gaps exactly as written.
-    prefix: line.prefix.replace(/\[[ xX]\]/, checked ? '[x]' : '[ ]'),
-  };
-}
-
 const LAYOUT_MARKER: Record<CardLayout, string> = {
   compact: 'compact',
   expanded: 'expand',
@@ -77,6 +66,5 @@ export function bindWriter(view: EditorView, dom: HTMLElement): CardWriter {
   return {
     setLink: (url) => apply((line) => withLink(line, url)),
     setLayout: (layout) => apply((line) => withLayout(line, layout)),
-    setChecked: (checked) => apply((line) => withChecked(line, checked)),
   };
 }

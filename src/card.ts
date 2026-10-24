@@ -2,7 +2,6 @@ import { setIcon } from 'obsidian';
 
 import { createActions, createInlineEditor } from './card-actions.ts';
 import type { CardContext } from './card-context.ts';
-import { createMarker } from './card-marker.ts';
 import { domainLabel } from './link-source.ts';
 import { fallbackMetadata } from './metadata.ts';
 import type { GlanceSettings, LinkMetadata, XPost } from './model.ts';
@@ -39,14 +38,6 @@ function startEdit(context: CardContext, body: HTMLElement): (() => void) | unde
     input.focus();
     input.select();
   };
-}
-
-/** Reading mode has no writer, which is what leaves its checkbox inert — the
- *  native one Obsidian rendered is still there and still works. */
-function toggleHandler(context: CardContext): ((checked: boolean) => void) | undefined {
-  const writer = context.write;
-  if (!writer) return undefined;
-  return (checked) => writer.setChecked(checked);
 }
 
 function createImage(metadata: LinkMetadata): HTMLElement {
@@ -122,8 +113,8 @@ function renderPost(
 ): void {
   container.replaceChildren();
   container.className = `glance-card glance-card--post${
-    context.marker === 'none' ? '' : ' is-listed'
-  }${context.marker === 'task' && context.line.checked ? ' is-task-checked' : ''}`;
+    context.line.list === 'task' && context.line.checked ? ' is-task-checked' : ''
+  }`;
   container.setAttribute('aria-label', `${metadata.title}: ${post.text.slice(0, 80)}`);
 
   const body = createDiv();
@@ -191,30 +182,36 @@ function renderPost(
   link.rel = 'noopener noreferrer';
   link.setAttribute('aria-label', `Open post by ${metadata.title}`);
 
-  const marker = createMarker(context, toggleHandler(context));
-  if (marker) container.append(marker);
   container.append(body, createActions(context, host, startEdit(context, body)), link);
+}
+
+/** A post as one row: what was said leads, who said it moves to the footer.
+ *  "Jaynit (@jaynitx)" alone would say nothing about why the link is there. */
+function compactPost(metadata: LinkMetadata, post: XPost): LinkMetadata {
+  const firstLine = post.text.split('\n').map((line) => line.trim()).find(Boolean);
+  return {
+    ...metadata,
+    title: firstLine ?? metadata.title,
+    author: firstLine ? `${post.authorName} (@${post.handle})` : undefined,
+  };
 }
 
 function renderMetadata(
   container: HTMLElement,
-  metadata: LinkMetadata,
+  source: LinkMetadata,
   host: CardHost,
   context: CardContext,
 ): void {
   const compact = context.layout === 'compact';
-  // Compact stays one line tall, so a post keeps the generic row there: its
-  // title and image are already the author and the first still.
-  if (metadata.post && !compact) {
-    renderPost(container, metadata, metadata.post, host, context);
+  if (source.post && !compact) {
+    renderPost(container, source, source.post, host, context);
     return;
   }
+  const metadata = source.post ? compactPost(source, source.post) : source;
   container.replaceChildren();
   container.className = `glance-card${metadata.degraded ? ' is-degraded' : ''}${
     compact ? ' is-compact' : ''
-  }${context.marker === 'none' ? '' : ' is-listed'}${
-    context.marker === 'task' && context.line.checked ? ' is-task-checked' : ''
-  }`;
+  }${context.line.list === 'task' && context.line.checked ? ' is-task-checked' : ''}`;
   container.setAttribute('aria-label', metadata.title);
 
   const body = createDiv();
@@ -261,8 +258,6 @@ function renderMetadata(
   // DOM order is visual order: body, then media. The stylesheet no longer
   // reorders them with `order`.
   const media = host.settings().showThumbnail && metadata.image ? createImage(metadata) : null;
-  const marker = createMarker(context, toggleHandler(context));
-  if (marker) container.append(marker);
   container.append(body);
   if (media) container.append(media);
   container.append(createActions(context, host, startEdit(context, body)), link);
@@ -277,9 +272,7 @@ function renderMetadata(
  */
 function renderEmbed(container: HTMLElement, context: CardContext, host: CardHost): void {
   container.replaceChildren();
-  container.className = `glance-card glance-card--embed${
-    context.marker === 'none' ? '' : ' is-listed'
-  }`;
+  container.className = 'glance-card glance-card--embed';
   container.setAttribute('aria-label', `Embedded page: ${domainLabel(context.line.url)}`);
 
   const header = createDiv();
@@ -309,8 +302,6 @@ function renderEmbed(container: HTMLElement, context: CardContext, host: CardHos
   frame.addEventListener('load', () => frame.classList.add('is-loaded'), { once: true });
   frame.src = context.line.url;
 
-  const marker = createMarker(context, toggleHandler(context));
-  if (marker) container.append(marker);
   container.append(header, frame, createActions(context, host, undefined));
 }
 

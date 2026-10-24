@@ -13,8 +13,8 @@ Part of the marioverse Obsidian plugin suite.
 ## What makes it different
 
 - Source-pure rendering: displaying a card never rewrites your Markdown.
-- Editable in place: the card's own controls — edit link, card size, task
-  checkbox — write back to the line, and only when you click them.
+- Editable in place: the card's own controls (edit link, card size) write back
+  to the line, and only when you click them.
 - Native editing: the card becomes editable Markdown when its line is active.
 - Theme-aware: all colors and typography inherit Obsidian theme tokens.
 - Local-first: metadata is fetched directly and cached in plugin data.
@@ -86,10 +86,13 @@ Links inside bullet, numbered and task items render as cards too:
 - [ ] https://obsidian.md %%glance:compact%%
 ```
 
-In Live Preview the card draws the list marker itself — CodeMirror replaces
-the whole line, so the original bullet or checkbox cannot be left standing —
-and ticking a card's checkbox rewrites just that one character in the line. In
-Reading mode Obsidian's own marker and checkbox stay in place.
+In a list the card replaces only the link: the bullet, number or checkbox,
+the indent and folding stay Obsidian's own, in Live Preview and Reading mode
+alike, and an item's sub-bullets stay under its card.
+
+List cards default to compact, one row tall, so an outline still reads as an
+outline. **Card size in lists** in settings changes that (compact, expanded,
+or the default card size), and a line marker still overrides it.
 
 ## Commands
 
