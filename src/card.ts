@@ -103,6 +103,9 @@ function createPostMedia(post: XPost): HTMLElement | null {
  * An X post drawn from its own data: author, full text and media, instead of
  * the iframe Obsidian loads for `![](x.com/…)`. Column layout, because the
  * text is the payload and the media sits under it the way it does on X.
+ *
+ * The text is always whole: a post cut mid-thought is not worth keeping in a
+ * note. Compact drops only the media, which is what makes a post tall.
  */
 function renderPost(
   container: HTMLElement,
@@ -111,8 +114,9 @@ function renderPost(
   host: CardHost,
   context: CardContext,
 ): void {
+  const compact = context.layout === 'compact';
   container.replaceChildren();
-  container.className = `glance-card glance-card--post${
+  container.className = `glance-card glance-card--post${compact ? ' is-compact' : ''}${
     context.line.list === 'task' && context.line.checked ? ' is-task-checked' : ''
   }`;
   container.setAttribute('aria-label', `${metadata.title}: ${post.text.slice(0, 80)}`);
@@ -155,7 +159,7 @@ function renderPost(
     body.append(text);
   }
 
-  const media = host.settings().showThumbnail ? createPostMedia(post) : null;
+  const media = !compact && host.settings().showThumbnail ? createPostMedia(post) : null;
   if (media) body.append(media);
 
   const footer = createDiv();
@@ -178,17 +182,6 @@ function renderPost(
   container.append(body, createActions(context, host, startEdit(context, body)));
 }
 
-/** A post as one row: what was said leads, who said it moves to the footer.
- *  "Ada (@ada)" alone would say nothing about why the link is there. */
-function compactPost(metadata: LinkMetadata, post: XPost): LinkMetadata {
-  const firstLine = post.text.split('\n').map((line) => line.trim()).find(Boolean);
-  return {
-    ...metadata,
-    title: firstLine ?? metadata.title,
-    author: firstLine ? `${post.authorName} (@${post.handle})` : undefined,
-  };
-}
-
 function renderMetadata(
   container: HTMLElement,
   source: LinkMetadata,
@@ -196,11 +189,11 @@ function renderMetadata(
   context: CardContext,
 ): void {
   const compact = context.layout === 'compact';
-  if (source.post && !compact) {
+  if (source.post) {
     renderPost(container, source, source.post, host, context);
     return;
   }
-  const metadata = source.post ? compactPost(source, source.post) : source;
+  const metadata = source;
   container.replaceChildren();
   container.className = `glance-card${metadata.degraded ? ' is-degraded' : ''}${
     compact ? ' is-compact' : ''
