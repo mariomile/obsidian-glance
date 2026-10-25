@@ -400,19 +400,14 @@ li > .glance-reading-card .glance-card__body {
   white-space: nowrap;
 }
 
-/* The post's own line breaks are part of what was written, so they stay.
-   Clamped rather than cut: a long post still reads as one card in a daily
-   note, and the whole card opens it on X. */
+/* The post's own line breaks are part of what was written, so they stay, and
+   the text is never clamped: the post is the content, not a preview of it. */
 .glance-post__text {
-  display: -webkit-box;
-  overflow: hidden;
   color: var(--text-normal);
   font-size: 15px;
   line-height: 1.45;
   white-space: pre-line;
   overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 8;
 }
 
 /* Fixed row heights rather than aspect-ratio: on a grid item WebKit derives
@@ -461,6 +456,13 @@ li > .glance-reading-card .glance-card__body {
   width: 18px;
   height: 18px;
   fill: currentColor;
+}
+
+/* A compact post is still a column of text, as tall as the post, so its
+   actions stay pinned to the corner instead of the compact row's centre. */
+.glance-card--post.is-compact .glance-card__actions {
+  top: 8px;
+  transform: none;
 }
 
 /* The live page itself, laid out as a column (header, then the frame) rather
